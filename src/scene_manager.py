@@ -8,7 +8,6 @@ SCENES: dict[str, type[Scene]]= {
     'puzzle': PuzzleScene
 }
 
-
 class SceneManager:
     def __init__(self):
         # Start with the menu

@@ -12,8 +12,6 @@ try:
 except AttributeError:
     pass # Ignore if on Mac/Linux
 
-# Initialize Pygame
-pygame.init()
 class ChessPuzzleEnv:
     def __init__(self):
         pygame.init()
