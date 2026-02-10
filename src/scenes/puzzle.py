@@ -1,9 +1,11 @@
 import pygame
+import json
 
 from src.scenes.scene import Scene
 # from src.logic import GameLogic  # Your existing logic class!
 from settings import *
 from src.utils.asset_loading import load_images
+from src.ui.element import *
 
 # Initialize Pygame
 
@@ -36,6 +38,12 @@ class PuzzleScene(Scene):
         self.dragging = False
         self.mouse_pos = (0, 0)
         self.logic = PuzzleLogic(self.SQUARE_SIZE)
+
+        self.return_image = ClickableImage(APP_IMG_URL + "return.png", self.SCREEN_WIDTH // 32, self.MARGIN, (self.SCREEN_WIDTH // 32, self.SCREEN_WIDTH // 32), action = lambda: self.manager.switch_scene('menu'))
+        with open(DATA_URL + 'puzzle_info.json') as json_data:
+            rules = json.load(json_data)["chess_ranger"]["rules"]
+            json_data.close()
+        self.rule_box = RuleBox(self.SCREEN_WIDTH - self.SCREEN_WIDTH // 40 - self.SCREEN_WIDTH // 5, self.MARGIN, self.SCREEN_WIDTH // 5, self.SCREEN_HEIGHT // 8, rules)
     
     def update_screen(self):
         screen = pygame.display.get_surface()
@@ -52,11 +60,8 @@ class PuzzleScene(Scene):
         self.update_screen()
         self.mouse_pos = pygame.mouse.get_pos()
         for event in event_list:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_2:
-                    print("Switching to menu...")
-                    self.manager.switch_scene('menu')
-
+            if self.return_image.check_click(event):
+                print("Switch to Menu button clicked!")
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     row, col = self.get_square_under_mouse(self.mouse_pos)
@@ -80,6 +85,10 @@ class PuzzleScene(Scene):
 
     def draw(self):
         self.draw_board()
+
+        self.rule_box.draw(self.display_surface)
+        self.return_image.draw(self.display_surface)
+
         # Draw dragged piece centered on mouse
         if self.dragging and self.drag_piece:
             img = self.logic.get_image(self.drag_piece)
@@ -114,7 +123,7 @@ class PuzzleScene(Scene):
                 # Create a transparent surface for the highlight
                 s = pygame.Surface((self.SQUARE_SIZE, self.SQUARE_SIZE))
                 s.set_alpha(150) 
-                s.fill((255, 255, 50)) 
+                s.fill(COLOR_HIGHLIGHT) 
                 self.display_surface.blit(s, (self.BOARD_X + hover_col * self.SQUARE_SIZE, self.BOARD_Y + hover_row * self.SQUARE_SIZE))    # type: ignore
 
         # 3. Draw Pieces
