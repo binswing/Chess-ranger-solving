@@ -6,14 +6,16 @@ from src.algorithms.algorithm import ChessSolver
 
 class AStarNode:
     def __init__(self, state, g, h, parent=None, action=None):
-        self.state = copy.deepcopy(state)       # The board configuration
-        self.g = g                              # Steps taken so far
-        self.h = h                              # Heuristic (estimated steps to go)
-        self.f = g + h                          # Total Score
-        self.parent = parent                    # For reconstructing path
-        self.action = action                    # The move that got us here
+        self.state = copy.deepcopy(state)
+        self.g = g
+        self.h = h
+        self.f = g + h
+        self.parent = parent
+        self.action = action
 
     def __lt__(self, other):
+        if self.f == other.f:
+            return self.g > other.g
         return self.f < other.f
 
 class AStarSolver(ChessSolver):
@@ -27,11 +29,16 @@ class AStarSolver(ChessSolver):
         self.pq = []
         heapq.heappush(self.pq, start_node)
         self.visited = set()
+        self.visited.add(self.hash_state(start_matrix))
         
         self.current_parent_node = None 
         self.pending_moves = []       
         self.solution_found = False
         self.final_node = None
+
+    def hash_state(self, matrix):
+        """Helper to create a hashable tuple from the board list"""
+        return tuple(tuple(row) for row in matrix)
 
     def take_action(self):
         if self.solution_found or (not self.pq and not self.pending_moves and not self.current_parent_node):
@@ -44,22 +51,24 @@ class AStarSolver(ChessSolver):
                 state_before_move = self.env.get_state()
                 self.env.step(move)
                 child_state = self.env.get_state()
+                child_hash = self.hash_state(child_state)
+                if child_hash in self.visited:
+                    continue 
                 child_h = self.env.calculate_heuristic()
                 
-                if child_h < 1000:
-                    child_node = AStarNode(
-                        child_state, 
-                        g=self.current_parent_node.g + 1, 
-                        h=child_h, 
-                        parent=self.current_parent_node, 
-                        action=move
-                    )
-                    heapq.heappush(self.pq, child_node)
+                child_node = AStarNode(
+                    child_state, 
+                    g=self.current_parent_node.g + 1, 
+                    h=child_h, 
+                    parent=self.current_parent_node, 
+                    action=move
+                )
+                
+                heapq.heappush(self.pq, child_node)
+                self.visited.add(child_hash)
                 return state_before_move, move
-            
             if not self.pq:
                 return None, None
-
             best_node = heapq.heappop(self.pq)
             if best_node.h == 0:
                 print("Solution Found!")
@@ -67,21 +76,6 @@ class AStarSolver(ChessSolver):
                 self.final_node = best_node
                 return None, None 
 
-            state_tuple = tuple(tuple(row) for row in best_node.state)
-            if state_tuple in self.visited:
-                continue
-            
-            self.visited.add(state_tuple)
             self.current_parent_node = best_node
             self.env.set_state(best_node.state)
             self.pending_moves = self.env.board.get_all_valid_moves()
-
-    def get_final_path(self):
-        if not self.final_node:
-            return []
-        path = []
-        curr = self.final_node
-        while curr.parent:
-            path.append(curr.action)
-            curr = curr.parent
-        return path[::-1]
