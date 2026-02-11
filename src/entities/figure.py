@@ -27,9 +27,9 @@ class Pawn(Piece):
         self.name = "Pawn"
         self.short_name = "p"
         if color:
-            self.legal_moves = [(1, 1), (1, -1)]
-        else:
             self.legal_moves = [(-1, 1), (-1, -1)]
+        else:
+            self.legal_moves = [(1, 1), (1, -1)]
     
 class Knight(Piece):
     def __init__(self, color: bool = True):
@@ -123,6 +123,17 @@ class Board:
                     board[-1].append(0)
                 else:
                     board[-1].append(piece_to_int[type(piece)] * (1 if piece.get_color() else -1))
+        return board
+    
+    def export_board_string(self) -> list[list[str]]:
+        board: list[list[str]] = []
+        for row in self.board:
+            board.append([])
+            for piece in row:
+                if piece == None:
+                    board[-1].append('--')
+                else:
+                    board[-1].append(piece.get_short_name())
         return board
     
     def move_piece(self, from_pos: tuple[int, int], to_pos: tuple[int, int]) -> bool:

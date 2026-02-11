@@ -1,6 +1,6 @@
 import numpy as np
 
-from figure import *
+from src.entities.figure import *
 
 class ChessRangerBoard(Board): # Only white pieces
     def __init__(self, board: list[list[int]] = [[0 for _ in range(8)] for _ in range(8)]) -> None:
@@ -36,7 +36,7 @@ class ChessRangerBoard(Board): # Only white pieces
             return False
 
         return True
-
+    
     def get_all_valid_moves(self):
         """Returns a list of all legal actions [(r1,c1,r2,c2), ...]"""
         moves = []
@@ -77,9 +77,10 @@ class ChessRangerPuzzle(ChessPuzzle):
         self.initial_board_layout = None
         if board_layout is None:
             board_layout = [[0]*8 for _ in range(8)]
-            board_layout[4][4] = 2 
-            board_layout[2][3] = 2
-            board_layout[3][5] = 6
+            board_layout[2][2] = 4
+            board_layout[4][4] = 3
+            board_layout[5][5] = 1
+            board_layout[2][5] = 3
         self.initial_board_layout = board_layout
         self.board = ChessRangerBoard(board_layout)
 
@@ -116,6 +117,9 @@ class ChessRangerPuzzle(ChessPuzzle):
     def get_observation(self):
         return np.array(self.board.export_board(), dtype=np.int8)
     
+    def export_board_string(self):
+        return self.board.export_board_string()
+
     def get_state(self):
         return self.board.export_board()
 

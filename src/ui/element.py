@@ -187,3 +187,122 @@ class ClickableImage:
                     self.action() # Run the assigned function
                 return True
         return False
+    
+class NumberSelector:
+    def __init__(self, x, y, min_val, max_val, initial_val, left_img_path, right_img_path, left_action=None, right_action=None):
+        self.x = x
+        self.y = y
+        self.value = initial_val
+        self.min_val = min_val
+        self.max_val = max_val
+        self.left_action = left_action
+        self.right_action = right_action
+        
+        # Style Settings
+        self.font = pygame.font.Font(None, 40)
+        self.text_color = (255, 255, 255)
+        self.spacing = 20 # Space between buttons and text
+        self.text_area_width = 60
+
+        def decrease():
+            if self.value > self.min_val:
+                self.value -= 1
+                self.update_text() # Refresh the text surface
+                if self.left_action:
+                    self.left_action(self.value)
+
+        self.btn_left = ClickableImage(
+            left_img_path, 
+            x, y, 
+            size=(40, 40), 
+            action=decrease
+        )
+
+        self.text_area_width = 60
+        
+        def increase():
+            if self.value < self.max_val:
+                self.value += 1
+                self.update_text()
+                if self.right_action:
+                    self.right_action(self.value)
+
+        btn_right_x = x + 40 + self.spacing + self.text_area_width + self.spacing
+        self.btn_right = ClickableImage(
+            right_img_path, 
+            btn_right_x, y, 
+            size=(40, 40), 
+            action=increase
+        )
+
+        self.text_surf = None
+        self.text_rect = None
+        self.update_text()
+
+    def update_text(self):
+        """ Renders the number text centered between the buttons """
+        text_str = str(self.value)
+        self.text_surf = self.font.render(text_str, True, self.text_color)
+        
+        start_x = self.x + 40 + self.spacing
+        center_x = start_x + (self.text_area_width // 2)
+        center_y = self.y + 20 # Half of button height (40/2)
+        
+        self.text_rect = self.text_surf.get_rect(center=(center_x, center_y))
+
+    def handle_event(self, event):
+        """ Passes the event down to the child buttons """
+        self.btn_left.check_click(event)
+        self.btn_right.check_click(event)
+
+    def draw(self, screen):
+        # Draw Left Button
+        self.btn_left.draw(screen)
+        
+        # Draw Text
+        if self.text_surf:
+            screen.blit(self.text_surf, self.text_rect)
+            
+        # Draw Right Button
+        self.btn_right.draw(screen)
+        
+    def get_value(self):
+        return self.value
+
+class StatsPanel:
+    def __init__(self, x, y, width, height, font_size=30, text_list:list[str]=[]):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.font = pygame.font.Font(None, font_size)
+        self.bg_color = (30, 30, 30, 200) # Semi-transparent black
+        self.text_color = (255, 255, 255)
+        self.text_list = text_list
+
+        # Default Data
+        self.nodes_visited = 0
+        self.path_length = 0
+        self.status = "Ready"
+
+    def update_stats(self, nodes=None, length=None, status=None):
+        if nodes is not None: self.nodes_visited = nodes
+        if length is not None: self.path_length = length
+        if status is not None: self.status = status
+
+    def draw(self, screen):
+        # 1. Draw Background
+        s = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
+        s.fill(self.bg_color)
+        screen.blit(s, self.rect.topleft)
+        pygame.draw.rect(screen, (200, 200, 200), self.rect, 2)
+
+        # 2. Render Text lines
+        lines = self.text_list + [
+            f"Status: {self.status}",
+            f"Nodes Visited: {self.nodes_visited}",
+            f"Solution Steps: {self.path_length}"
+        ]
+        
+        y_offset = 10
+        for line in lines:
+            surf = self.font.render(line, True, self.text_color)
+            screen.blit(surf, (self.rect.x + 10, self.rect.y + y_offset))
+            y_offset += 30
