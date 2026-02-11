@@ -136,8 +136,8 @@ class PuzzleScene(Scene):
             self.logic.get_num_of_pieces(), 
             APP_IMG_URL + "left-arrow.png", 
             APP_IMG_URL + "right-arrow.png", 
-            lambda x: self.logic.change_num_of_pieces(x), 
-            lambda x: self.logic.change_num_of_pieces(x)
+            self.handle_num_of_pieces, 
+            self.handle_num_of_pieces
         )
         self.change_map_button = ThemedButton(
             "Change Map", 
@@ -176,6 +176,9 @@ class PuzzleScene(Scene):
         self.is_playing_solution = False
         self.playback_queue = []
 
+        self.game_won = False
+        self.win_font = pygame.font.Font(None, 100)
+
     def update_screen(self):
         screen = pygame.display.get_surface()
         self.SCREEN_WIDTH, self.SCREEN_HEIGHT = screen.get_size()
@@ -200,7 +203,7 @@ class PuzzleScene(Scene):
             if progress >= 1.0:
                 self.animating = False
                 r1, c1, r2, c2 = self.final_move_data 
-                self.logic.step((r1, c1, r2, c2)) 
+                obs, reward, done, info = self.logic.step((r1, c1, r2, c2))
             else:
                 self.current_anim_pos = self.anim_start_pos.lerp(self.anim_end_pos, progress)
 
@@ -259,8 +262,11 @@ class PuzzleScene(Scene):
                     row, col = self.get_square_under_mouse(self.mouse_pos)
                     
                     if row is not None:
-                        # Manual move also uses (r1, c1, r2, c2)
-                        self.logic.step((self.drag_origin[0], self.drag_origin[1], row, col))
+                        obs, reward, done, info = self.logic.step((self.drag_origin[0], self.drag_origin[1], row, col))
+                
+                        if done:
+                            print("Game Won via Drag!")
+                            self.game_won = True
                     
                     self.dragging = False
                     self.drag_piece = None
@@ -288,6 +294,19 @@ class PuzzleScene(Scene):
             img = self.logic.get_image(self.drag_piece)
             rect = img.get_rect(center=self.mouse_pos)
             screen.blit(img, rect)
+
+        if self.game_won:
+            screen = pygame.display.get_surface()
+
+            s = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA)
+            s.fill((0, 0, 0, 150)) 
+            screen.blit(s, (0,0))
+
+            text_surf = self.win_font.render("YOU WIN!", True, COLOR_DARK)
+            text_rect = text_surf.get_rect(center=(self.SCREEN_WIDTH // 2, self.SCREEN_HEIGHT // 2))
+
+            pygame.draw.rect(screen, (255, 255, 255), text_rect.inflate(20, 20), 4)
+            screen.blit(text_surf, text_rect)
     
     def reset_game(self):
         """ Stops any animation and resets logic """
@@ -329,6 +348,7 @@ class PuzzleScene(Scene):
         self.playback_queue = []
         self.is_playing_solution = False
         self.stats_panel.update_stats(status="Ready", nodes=0, length=0)
+        self.game_won = False
 
     def handle_reset(self):
         print("Resetting Board...")
@@ -336,6 +356,11 @@ class PuzzleScene(Scene):
         self.animating = False
         self.is_playing_solution = False
         self.playback_queue = []
+        self.game_won = False
+
+    def handle_num_of_pieces(self, num_of_pieces):
+        self.logic.change_num_of_pieces(num_of_pieces)
+        self.game_won = False
 
     def start_solution_playback(self):
         if not self.A_star_solver:
