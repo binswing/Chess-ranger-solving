@@ -380,5 +380,5 @@ class PuzzleScene(Scene):
                 y_pos = self.BOARD_Y + (r * self.SQUARE_SIZE)
                 radius = self.SQUARE_SIZE // 8 
                 s = pygame.Surface((self.SQUARE_SIZE, self.SQUARE_SIZE), pygame.SRCALPHA)
-                pygame.draw.circle(s, COLOR_GRAY_HIGHLIGHT, (self.SQUARE_SIZE//2, self.SQUARE_SIZE//2), radius)
+                pygame.draw.circle(s, COLOR_ORANGE_HIGHLIGHT, (self.SQUARE_SIZE//2, self.SQUARE_SIZE//2), radius)
                 screen.blit(s, (x_pos, y_pos))
