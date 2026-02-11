@@ -1,4 +1,6 @@
 import pygame
+import copy
+
 from src.entities.chess import ChessPuzzle
 from src.algorithms.algorithm import ChessSolver
 from src.algorithms.Astar import AStarSolver
@@ -13,23 +15,20 @@ ALGORITHMS: dict[str, type[ChessSolver]]= {
     "DFS": DFSSolver
 }
 
-
 class AlgorithmHandler:
     def __init__(self, scene):
         self.scene = scene
         self.logic = scene.logic
-        
-        panel_width = scene.SCREEN_WIDTH // 5
-        panel_height = scene.SCREEN_HEIGHT // 9
-        base_x = scene.SCREEN_WIDTH - panel_width - 50 
-        
-        start_y = scene.MARGIN * 2 + scene.SCREEN_HEIGHT // 8 + 10
-        gap = 10
+
+        self.panel_width = scene.SCREEN_WIDTH // 5
+        self.base_x = scene.SCREEN_WIDTH - self.panel_width - 50 
+        self.start_y = scene.MARGIN + scene.SCREEN_HEIGHT // 8 + 10
+        self.gap = 10
 
         self.stats_panels = {
-            "A*": StatsPanel(base_x, start_y, panel_width, panel_height, 30, ["A* Status"]),
-            "BFS": StatsPanel(base_x, start_y + panel_height + gap, panel_width, panel_height, 30, ["BFS Status"]),
-            "DFS": StatsPanel(base_x, start_y + (panel_height + gap)*2, panel_width, panel_height, 30, ["DFS Status"]) # <--- NEW PANEL
+            "A*": StatsPanel(self.base_x, 0, self.panel_width, 25, ["A* Status"]),
+            "BFS": StatsPanel(self.base_x, 0, self.panel_width, 25, ["BFS Status"]),
+            "DFS": StatsPanel(self.base_x, 0, self.panel_width, 25, ["DFS Status"])
         }
         
         self.active_algorithm_name = None  
@@ -43,8 +42,8 @@ class AlgorithmHandler:
         self.scene.game_won = False
         self.scene.is_playing_solution = False
         self.scene.playback_queue = []
-        
-        self.stats_panels[algorithm_name].update_stats(status="Starting...", nodes=0, length=0)
+
+        self.stats_panels[algorithm_name].update_stats(status="Starting...", nodes=0, path=[])
         
         algorithm_class = ALGORITHMS[algorithm_name]
         self.iterator = self.logic.solver_iterator(self.scene, algorithm_class)
@@ -62,8 +61,7 @@ class AlgorithmHandler:
             
             elif status == "finished":
                 self.solutions[self.active_algorithm_name] = data
-                path_len = len(data.get_final_path())
-                panel.update_stats(length=path_len, status="Solved!")
+                panel.update_stats(path=copy.deepcopy(data.get_final_path()), status="Solved!")
                 self.iterator = None 
                 self.active_algorithm_name = None 
             
@@ -82,8 +80,17 @@ class AlgorithmHandler:
             self.active_algorithm_name = None
 
     def draw(self, screen):
-        for panel in self.stats_panels.values():
+        """
+        Draws panels and dynamically updates their Y positions 
+        so they stack neatly.
+        """
+        current_y = self.start_y
+        order = ["A*", "BFS", "DFS"]  
+        for name in order:
+            panel = self.stats_panels[name]
+            panel.rect.y = current_y
             panel.draw(screen)
+            current_y += panel.rect.height + self.gap
 
     def has_solution(self, algorithm_name):
         solver = self.solutions.get(algorithm_name)
@@ -97,4 +104,4 @@ class AlgorithmHandler:
         self.active_algorithm_name = None
         for name in self.solutions:
             self.solutions[name] = None
-            self.stats_panels[name].update_stats(status="Ready", nodes=0, length=0)
+            self.stats_panels[name].update_stats(status="Ready", nodes=0, path=[])

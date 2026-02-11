@@ -137,7 +137,8 @@ class PuzzleScene(Scene):
         self.playback_queue = []
         self.game_won = False
         self.win_font = pygame.font.Font(None, 100)
-
+        self.coord_font = pygame.font.SysFont("arial", 30, bold=True)
+        self.coord_font.bold = True
         self.algorithm_handler = AlgorithmHandler(self)
 
         with open(DATA_URL + 'puzzle_info.json') as json_data:
@@ -175,7 +176,7 @@ class PuzzleScene(Scene):
         self.DFS_play_btn = ThemedButton("Play DFS", btn_x, dfs_y + btn_height + 5, btn_width, btn_height, font_size=35, action=lambda: self.start_solution_playback("DFS"))
 
         rule_box_x = self.SCREEN_WIDTH - self.SCREEN_WIDTH // 40 - self.SCREEN_WIDTH // 5
-        self.rule_box = RuleBox(rule_box_x, self.MARGIN * 2, self.SCREEN_WIDTH // 5, self.SCREEN_HEIGHT // 8, rules)
+        self.rule_box = RuleBox(rule_box_x, self.MARGIN , self.SCREEN_WIDTH // 5, self.SCREEN_HEIGHT // 8, rules)
 
     def update_screen(self):
         screen = pygame.display.get_surface()
@@ -353,8 +354,20 @@ class PuzzleScene(Scene):
             for c in range(BOARD_COLS):
                 x_pos = self.BOARD_X + (c * self.SQUARE_SIZE)
                 y_pos = self.BOARD_Y + (r * self.SQUARE_SIZE)
+                is_light_square = (r + c) % 2 == 0
                 color = COLOR_LIGHT if (r + c) % 2 == 0 else COLOR_DARK
                 pygame.draw.rect(screen, color, (x_pos, y_pos, self.SQUARE_SIZE, self.SQUARE_SIZE))
+                text_color = COLOR_DARK if is_light_square else COLOR_LIGHT
+                if c == 0:
+                    rank_text = str(8 - r)
+                    text_surf = self.coord_font.render(rank_text, True, text_color)
+                    screen.blit(text_surf, (x_pos + self.SQUARE_SIZE // 12, y_pos + self.SQUARE_SIZE // 24))
+                if r == 7:
+                    file_text = chr(97 + c)
+                    text_surf = self.coord_font.render(file_text, True, text_color)
+                    text_width = text_surf.get_width()
+                    text_height = text_surf.get_height()
+                    screen.blit(text_surf, (x_pos + self.SQUARE_SIZE - text_width - self.SQUARE_SIZE // 12, y_pos + self.SQUARE_SIZE - text_height - self.SQUARE_SIZE // 24))
 
         if self.dragging:
             hover_row, hover_col = self.get_square_under_mouse(self.mouse_pos)

@@ -270,39 +270,68 @@ class NumberSelector:
         return self.value
 
 class StatsPanel:
-    def __init__(self, x, y, width, height, font_size=30, text_list:list[str]=[]):
-        self.rect = pygame.Rect(x, y, width, height)
+    def __init__(self, x, y, width, font_size=30, text_list:list[str]=[]):
+        self.rect = pygame.Rect(x, y, width, 0)
         self.font = pygame.font.Font(None, font_size)
-        self.bg_color = (30, 30, 30, 200) # Semi-transparent black
+        self.font_size = font_size
+        self.bg_color = (30, 30, 30, 200)
         self.text_color = (255, 255, 255)
-        self.text_list = text_list
+        self.base_text_list = text_list
 
-        # Default Data
         self.nodes_visited = 0
         self.path_length = 0
         self.status = "Ready"
+        self.path = None
+        
+        self.lines_to_draw = []
+        self.line_height = font_size + 5
+        self.side_padding = 15
+        self.top_margin = 20    
+        self.bottom_padding = 10 
+        
+        self.recalculate_layout()
 
-    def update_stats(self, nodes=None, length=None, status=None):
+    def update_stats(self, nodes=None, status=None, path=None):
         if nodes is not None: self.nodes_visited = nodes
-        if length is not None: self.path_length = length
         if status is not None: self.status = status
+        if path is not None: 
+            self.path = path
+            self.path_length = len(path)
+        
+        self.recalculate_layout()
+
+    def recalculate_layout(self):
+        self.lines_to_draw = self.base_text_list[:]
+        self.lines_to_draw.append(f"Status: {self.status}")
+        self.lines_to_draw.append(f"Nodes: {self.nodes_visited}")
+        
+        if self.path is not None:
+             self.lines_to_draw.append(f"Steps: {self.path_length}")
+             if self.path_length > 0:
+                self.lines_to_draw.append("Path:")
+                moves_str = []
+                for move in self.path:
+                    start = f"{chr(move[1]+97)}{8-move[0]}"
+                    end = f"{chr(move[3]+97)}{8-move[2]}"
+                    moves_str.append(f"{start}-{end}")
+                
+                full_path_str = " -> ".join(moves_str)
+                chars_per_line = int(self.rect.width / (self.font_size * 0.34)) 
+                for i in range(0, len(full_path_str), chars_per_line):
+                    self.lines_to_draw.append(full_path_str[i : i + chars_per_line])
+        num_lines = len(self.lines_to_draw)
+        new_height = self.top_margin + (num_lines * self.line_height) + self.bottom_padding
+        self.rect.height = new_height
 
     def draw(self, screen):
-        # 1. Draw Background
         s = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
         s.fill(self.bg_color)
         screen.blit(s, self.rect.topleft)
         pygame.draw.rect(screen, (200, 200, 200), self.rect, 2)
 
-        # 2. Render Text lines
-        lines = self.text_list + [
-            f"Status: {self.status}",
-            f"Nodes Visited: {self.nodes_visited}",
-            f"Solution Steps: {self.path_length}"
-        ]
+        y_offset = self.top_margin 
         
-        y_offset = 10
-        for line in lines:
+        for line in self.lines_to_draw:
             surf = self.font.render(line, True, self.text_color)
-            screen.blit(surf, (self.rect.x + 10, self.rect.y + y_offset))
-            y_offset += 30
+            screen.blit(surf, (self.rect.x + self.side_padding, self.rect.y + y_offset))
+            y_offset += self.line_height
