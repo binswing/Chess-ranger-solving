@@ -1,7 +1,7 @@
 import collections
 import copy
 
-from src.entities.chess import ChessRangerPuzzle
+from src.entities.chess import ChessPuzzle
 from src.algorithms.algorithm import ChessSolver
 
 class BFSNode:
@@ -11,27 +11,31 @@ class BFSNode:
         self.action = action
 
 class BFSSolver(ChessSolver):
-    def __init__(self, env: ChessRangerPuzzle):
+    def __init__(self, env: ChessPuzzle):
         super().__init__(env)
 
-        start_matrix = env.get_state()
-        env.set_state(start_matrix)
+        start_state = env.get_state()
+        env.set_state(start_state)
         
-        start_node = BFSNode(start_matrix)
+        start_node = BFSNode(start_state)
         self.queue = collections.deque([start_node])
         self.visited = set()
         
-        state_tuple = tuple(tuple(row) for row in start_matrix)
-        self.visited.add(state_tuple)
+        self.visited.add(self.hash_state(start_state))
         
         self.current_parent_node = None 
         self.pending_moves = []       
         self.solution_found = False
         self.final_node = None
 
-        if self.env.calculate_heuristic(start_matrix) == 0:
+        if self.env.calculate_heuristic(start_state) == 0:
             self.solution_found = True
             self.final_node = start_node
+
+    def hash_state(self, state):
+        board_tuple = tuple(tuple(row) for row in state["board"])
+        turn = state["turn"]
+        return (board_tuple, turn)
 
     def take_action(self):
         if self.solution_found or (not self.queue and not self.pending_moves and not self.current_parent_node):
@@ -46,11 +50,12 @@ class BFSSolver(ChessSolver):
                 self.env.step(move)
                 
                 child_state = self.env.get_state()
-                state_tuple = tuple(tuple(row) for row in child_state)
-                if state_tuple in self.visited:
+                child_hash = self.hash_state(child_state)
+                
+                if child_hash in self.visited:
                     continue
                 
-                self.visited.add(state_tuple)
+                self.visited.add(child_hash)
                 child_node = BFSNode(
                     child_state, 
                     parent=self.current_parent_node, 

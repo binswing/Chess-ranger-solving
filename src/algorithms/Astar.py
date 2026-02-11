@@ -1,7 +1,7 @@
 import heapq
 import copy
 
-from src.entities.chess import ChessRangerPuzzle
+from src.entities.chess import ChessPuzzle
 from src.algorithms.algorithm import ChessSolver
 
 class AStarNode:
@@ -19,26 +19,28 @@ class AStarNode:
         return self.f < other.f
 
 class AStarSolver(ChessSolver):
-    def __init__(self, env: ChessRangerPuzzle):
+    def __init__(self, env: ChessPuzzle):
         super().__init__(env)
 
-        start_matrix = env.get_state()
-        env.set_state(start_matrix)
+        start_state = env.get_state()
+        env.set_state(start_state)
         start_h = env.calculate_heuristic()
-        start_node = AStarNode(start_matrix, 0, start_h)
+        start_node = AStarNode(start_state, 0, start_h)
         self.pq = []
         heapq.heappush(self.pq, start_node)
         self.visited = set()
-        self.visited.add(self.hash_state(start_matrix))
+        self.visited.add(self.hash_state(start_state))
         
         self.current_parent_node = None 
         self.pending_moves = []       
         self.solution_found = False
         self.final_node = None
 
-    def hash_state(self, matrix):
-        """Helper to create a hashable tuple from the board list"""
-        return tuple(tuple(row) for row in matrix)
+    def hash_state(self, state):
+        """Helper to create a hashable tuple from the board state dict"""
+        board_tuple = tuple(tuple(row) for row in state["board"])
+        turn = state["turn"]
+        return (board_tuple, turn)
 
     def take_action(self):
         if self.solution_found or (not self.pq and not self.pending_moves and not self.current_parent_node):

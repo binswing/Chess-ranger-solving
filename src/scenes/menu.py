@@ -15,8 +15,8 @@ class MenuScene(Scene):
         logo_width, logo_height = logo_image.get_size()
 
         self.logo_image = Image(APP_IMG_URL + "logo.png", SCREEN_WIDTH // 20, SCREEN_HEIGHT // 12, (logo_width * 3 // 4, logo_height * 3 // 4))
-        self.chess_ranger_scene_button = ThemedButton("Chess Ranger Mode", SCREEN_WIDTH // 20 + logo_width * 3 // 8 - 200 , SCREEN_HEIGHT // 12 + logo_height * 3 // 4 - 20 + 100 * 1, 400, 60, font_size = 40, action = lambda: self.manager.switch_scene('puzzle'))
-        self.chess_melee_scene_button = ThemedButton("Chess Melee Mode", SCREEN_WIDTH // 20 + logo_width * 3 // 8 - 200 , SCREEN_HEIGHT // 12 + logo_height * 3 // 4 - 20 + 100 * 2, 400, 60, font_size = 40, action = lambda: self.manager.switch_scene('puzzle'))
+        self.chess_ranger_scene_button = ThemedButton("Chess Ranger Mode", SCREEN_WIDTH // 20 + logo_width * 3 // 8 - 200 , SCREEN_HEIGHT // 12 + logo_height * 3 // 4 - 20 + 100 * 1, 400, 60, font_size = 40, action = lambda: self.manager.switch_scene('puzzle', "ranger"))
+        self.chess_melee_scene_button = ThemedButton("Chess Melee Mode", SCREEN_WIDTH // 20 + logo_width * 3 // 8 - 200 , SCREEN_HEIGHT // 12 + logo_height * 3 // 4 - 20 + 100 * 2, 400, 60, font_size = 40, action = lambda: self.manager.switch_scene('puzzle', "melee"))
         self.credit_scene_button = ThemedButton("Credits", SCREEN_WIDTH // 20 + logo_width * 3 // 8 - 200 , SCREEN_HEIGHT // 12 + logo_height * 3 // 4 - 20 + 100 * 3, 400, 60, font_size = 40)
         self.quit_button = ThemedButton("Quit", SCREEN_WIDTH // 20 + logo_width * 3 // 8 - 200 , SCREEN_HEIGHT // 12 + logo_height * 3 // 4 - 20 + 100 * 4, 400, 60, font_size = 40, action = self.quit)
 

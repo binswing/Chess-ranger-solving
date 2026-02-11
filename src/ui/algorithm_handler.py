@@ -1,5 +1,5 @@
 import pygame
-from src.entities.chess import ChessRangerPuzzle
+from src.entities.chess import ChessPuzzle
 from src.algorithms.algorithm import ChessSolver
 from src.algorithms.Astar import AStarSolver
 from src.algorithms.BFS import BFSSolver

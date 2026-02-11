@@ -10,18 +10,32 @@ from settings import *
 from src.utils.asset_loading import load_images
 from src.ui.element import *
 from src.ui.algorithm_handler import AlgorithmHandler
-from src.entities.chess import ChessRangerPuzzle
+from src.entities.chess import ChessPuzzle
 
 with open(DATA_URL + 'chess_ranger/puzzle_map.json') as json_data:
-    num_pieces_list = list(map(lambda x: int(x), json.load(json_data).keys()))
+    chess_ranger_num_pieces_list = list(map(lambda x: int(x), json.load(json_data).keys()))
     json_data.close()
 
-MIN_NUM_PIECES = min(num_pieces_list)
-MAX_NUM_PIECES = max(num_pieces_list)
+CHESS_RANGER_MIN_NUM_PIECES = min(chess_ranger_num_pieces_list)
+CHESS_RANGER_MAX_NUM_PIECES = max(chess_ranger_num_pieces_list)
+
+with open(DATA_URL + 'chess_melee/puzzle_map.json') as json_data:
+    chess_melee_num_pieces_list = list(map(lambda x: int(x), json.load(json_data).keys()))
+    json_data.close()
+
+CHESS_MELEE_MIN_NUM_PIECES = min(chess_melee_num_pieces_list)
+CHESS_MELEE_MAX_NUM_PIECES = max(chess_melee_num_pieces_list)
 
 class PuzzleLogic:
-    def __init__(self, square_size, board_layout: list[list[int]] | None = None):
-        self.puzzle = ChessRangerPuzzle(board_layout)
+    def __init__(self, mode, square_size, board_layout: list[list[int]] | None = None):
+        self.mode = mode
+        self.puzzle = ChessPuzzle(mode, board_layout)
+        if mode == "ranger":
+            self.MIN_NUM_PIECES = CHESS_RANGER_MIN_NUM_PIECES
+            self.MAX_NUM_PIECES = CHESS_RANGER_MAX_NUM_PIECES
+        else:
+            self.MIN_NUM_PIECES = CHESS_MELEE_MIN_NUM_PIECES
+            self.MAX_NUM_PIECES = CHESS_MELEE_MAX_NUM_PIECES
         self.initial_board_layout = self.puzzle.get_state()
         self.images = load_images(square_size)
         self.current_num_of_pieces = self.puzzle.board.count_pieces()
@@ -30,10 +44,10 @@ class PuzzleLogic:
         return self.puzzle.step(action)
     
     def change_num_of_pieces(self, num: int) -> bool:
-        if num < MIN_NUM_PIECES or num > MAX_NUM_PIECES:
+        if num < self.MIN_NUM_PIECES or num > self.MAX_NUM_PIECES:
             return False
         self.current_num_of_pieces = num
-        with open(DATA_URL + 'chess_ranger/puzzle_map.json') as json_data:
+        with open(DATA_URL + f'chess_{self.mode}/puzzle_map.json') as json_data:
             map_list = json.load(json_data)[str(num)]
             json_data.close()
         new_map = self.puzzle.board.export_board()
@@ -44,7 +58,7 @@ class PuzzleLogic:
         return True
 
     def change_map(self):
-        with open(DATA_URL + 'chess_ranger/puzzle_map.json') as json_data:
+        with open(DATA_URL + f'chess_{self.mode}/puzzle_map.json') as json_data:
             map_list = json.load(json_data)[str(self.current_num_of_pieces)]
             json_data.close()
         new_map = self.puzzle.board.export_board()
@@ -59,7 +73,7 @@ class PuzzleLogic:
         self.puzzle.reset(self.initial_board_layout)
 
     def solver_iterator(self, scene, algorithm_class):
-        temp_env = ChessRangerPuzzle(self.puzzle.get_state())
+        temp_env = ChessPuzzle(self.mode, self.puzzle.get_state())
         solver = algorithm_class(temp_env)
         iterations = 0
         
@@ -93,15 +107,22 @@ class PuzzleLogic:
         return self.current_num_of_pieces
         
 class PuzzleScene(Scene):
-    def __init__(self, manager):
+    def __init__(self, manager, mode):
         super().__init__(manager)
         self.update_screen()
-
+        self.mode = mode
+        if mode == "ranger":
+            self.MIN_NUM_PIECES = CHESS_RANGER_MIN_NUM_PIECES
+            self.MAX_NUM_PIECES = CHESS_RANGER_MAX_NUM_PIECES
+        else:
+            self.MIN_NUM_PIECES = CHESS_MELEE_MIN_NUM_PIECES
+            self.MAX_NUM_PIECES = CHESS_MELEE_MAX_NUM_PIECES
         self.drag_piece = None
         self.drag_origin = None
         self.dragging = False
+        self.valid_moves = []
         self.mouse_pos = (0, 0)
-        self.logic = PuzzleLogic(self.SQUARE_SIZE)
+        self.logic = PuzzleLogic(mode, self.SQUARE_SIZE)
 
         self.animating = False
         self.anim_piece = None      
@@ -120,7 +141,7 @@ class PuzzleScene(Scene):
         self.algorithm_handler = AlgorithmHandler(self)
 
         with open(DATA_URL + 'puzzle_info.json') as json_data:
-            rules = json.load(json_data)["chess_ranger"]["rules"]
+            rules = json.load(json_data)[f"chess_{self.mode}"]["rules"]
 
         self.return_image = ClickableImage(APP_IMG_URL + "return.png", self.SCREEN_WIDTH // 32, self.MARGIN, (self.SCREEN_WIDTH // 32, self.SCREEN_WIDTH // 32), action = lambda: self.manager.switch_scene('menu'))
 
@@ -132,7 +153,7 @@ class PuzzleScene(Scene):
         
         self.num_of_pieces_selector = NumberSelector(
             self.SCREEN_WIDTH // 40, start_y + 20, 
-            MIN_NUM_PIECES, MAX_NUM_PIECES, self.logic.get_num_of_pieces(), 
+            self.MIN_NUM_PIECES, self.MAX_NUM_PIECES, self.logic.get_num_of_pieces(), 
             APP_IMG_URL + "left-arrow.png", APP_IMG_URL + "right-arrow.png", 
             self.handle_num_of_pieces, self.handle_num_of_pieces
         )
@@ -208,19 +229,27 @@ class PuzzleScene(Scene):
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     row, col = self.get_square_under_mouse(self.mouse_pos)
+                    self.valid_moves = [] 
                     if row is not None and self.logic.get_board()[row][col] != '--':
                         self.dragging = True
                         self.drag_piece = self.logic.get_board()[row][col]
                         self.drag_origin = (row, col)
+                        full_moves = self.logic.puzzle.board.get_all_valid_moves(specific_pos=(row, col))
+                        self.valid_moves = [(m[2], m[3]) for m in full_moves]
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1 and self.dragging:
                     row, col = self.get_square_under_mouse(self.mouse_pos)
+                    move_made = False
                     if row is not None:
                         obs, reward, done, info = self.logic.step((self.drag_origin[0], self.drag_origin[1], row, col))
-                        if done: self.game_won = True
+                        if reward != -10: 
+                            move_made = True
+                            if done: self.game_won = True
                     self.dragging = False
                     self.drag_piece = None
+                    if move_made:
+                        self.valid_moves = []   
 
     def draw(self):
         self.draw_board()
@@ -345,3 +374,11 @@ class PuzzleScene(Scene):
                     x_pos = self.BOARD_X + (c * self.SQUARE_SIZE)
                     y_pos = self.BOARD_Y + (r * self.SQUARE_SIZE)
                     screen.blit(self.logic.get_image(piece), (x_pos, y_pos))
+        if self.valid_moves: 
+            for (r, c) in self.valid_moves:
+                x_pos = self.BOARD_X + (c * self.SQUARE_SIZE)
+                y_pos = self.BOARD_Y + (r * self.SQUARE_SIZE)
+                radius = self.SQUARE_SIZE // 8 
+                s = pygame.Surface((self.SQUARE_SIZE, self.SQUARE_SIZE), pygame.SRCALPHA)
+                pygame.draw.circle(s, COLOR_GRAY_HIGHLIGHT, (self.SQUARE_SIZE//2, self.SQUARE_SIZE//2), radius)
+                screen.blit(s, (x_pos, y_pos))
