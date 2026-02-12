@@ -306,8 +306,8 @@ class StatsPanel:
         self.lines_to_draw.append(f"Nodes: {self.nodes_visited}")
         
         if self.path is not None:
-             self.lines_to_draw.append(f"Steps: {self.path_length}")
-             if self.path_length > 0:
+            self.lines_to_draw.append(f"Steps: {self.path_length}")
+            if self.path_length > 0:
                 self.lines_to_draw.append("Path:")
                 moves_str = []
                 for move in self.path:
@@ -335,3 +335,43 @@ class StatsPanel:
             surf = self.font.render(line, True, self.text_color)
             screen.blit(surf, (self.rect.x + self.side_padding, self.rect.y + y_offset))
             y_offset += self.line_height
+
+class FeedbackToast:
+    def __init__(self, x, y, min_width=200):
+        self.x = x
+        self.y = y
+        self.min_width = min_width
+        self.text = ""
+        self.is_visible = False
+        self.timer = 0
+        self.duration = 3000
+        self.font = pygame.font.SysFont("arial", 24)
+        self.color = (0, 255, 0)
+        self.bg_color = (30, 30, 30, 220)
+        self.border_color = (100, 100, 100)
+
+    def show(self, text, is_error=False):
+        self.text = text
+        self.is_visible = True
+        self.timer = pygame.time.get_ticks()
+        self.color = (255, 80, 80) if is_error else (100, 255, 100)
+        self.border_color = (200, 50, 50) if is_error else (50, 200, 50)
+
+    def update(self):
+        if self.is_visible:
+            if pygame.time.get_ticks() - self.timer > self.duration:
+                self.is_visible = False
+
+    def draw(self, screen):
+        if not self.is_visible:
+            return
+        text_surf = self.font.render(self.text, True, self.color)
+        width = max(self.min_width, text_surf.get_width() + 40)
+        height = 50
+        rect = pygame.Rect(self.x, self.y, width, height)
+        s = pygame.Surface((width, height), pygame.SRCALPHA)
+        s.fill(self.bg_color)
+        screen.blit(s, (self.x, self.y)) 
+        pygame.draw.rect(screen, self.border_color, rect, 2)
+        text_rect = text_surf.get_rect(center=rect.center)
+        screen.blit(text_surf, text_rect)
