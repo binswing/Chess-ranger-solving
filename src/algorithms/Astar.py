@@ -37,7 +37,6 @@ class AStarSolver(ChessSolver):
         self.final_node = None
 
     def hash_state(self, state):
-        """Helper to create a hashable tuple from the board state dict"""
         board_tuple = tuple(tuple(row) for row in state["board"])
         turn = state["turn"]
         return (board_tuple, turn)

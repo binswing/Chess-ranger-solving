@@ -41,3 +41,9 @@ def get_puzzle_limits(mode):
     except Exception as e:
         print(f"Error loading limits for {mode}: {e}")
         return 1, 1
+    
+def colorize_image(image, new_color):
+    image = image.copy()
+    image.fill((0, 0, 0, 255), None, pygame.BLEND_RGBA_MULT)
+    image.fill(new_color[0:3] + (0,), None, pygame.BLEND_RGBA_ADD)
+    return image
