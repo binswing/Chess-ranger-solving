@@ -3,39 +3,23 @@ import json
 import random
 import time
 import copy
+import os
 
 from src.scenes.scene import Scene
-# from src.logic import GameLogic  # Your existing logic class!
 from settings import *
-from src.utils.asset_loading import load_images
+from src.utils.asset_loading import load_images, get_puzzle_limits
 from src.ui.element import *
 from src.ui.algorithm_handler import AlgorithmHandler
 from src.entities.chess import ChessPuzzle
 
-with open(DATA_URL + 'chess_ranger/puzzle_map.json') as json_data:
-    chess_ranger_num_pieces_list = list(map(lambda x: int(x), json.load(json_data).keys()))
-    json_data.close()
-
-CHESS_RANGER_MIN_NUM_PIECES = min(chess_ranger_num_pieces_list)
-CHESS_RANGER_MAX_NUM_PIECES = max(chess_ranger_num_pieces_list)
-
-with open(DATA_URL + 'chess_melee/puzzle_map.json') as json_data:
-    chess_melee_num_pieces_list = list(map(lambda x: int(x), json.load(json_data).keys()))
-    json_data.close()
-
-CHESS_MELEE_MIN_NUM_PIECES = min(chess_melee_num_pieces_list)
-CHESS_MELEE_MAX_NUM_PIECES = max(chess_melee_num_pieces_list)
 
 class PuzzleLogic:
     def __init__(self, mode, square_size, board_layout: list[list[int]] | None = None):
         self.mode = mode
         self.puzzle = ChessPuzzle(mode, board_layout)
-        if mode == "ranger":
-            self.MIN_NUM_PIECES = CHESS_RANGER_MIN_NUM_PIECES
-            self.MAX_NUM_PIECES = CHESS_RANGER_MAX_NUM_PIECES
-        else:
-            self.MIN_NUM_PIECES = CHESS_MELEE_MIN_NUM_PIECES
-            self.MAX_NUM_PIECES = CHESS_MELEE_MAX_NUM_PIECES
+
+        self.MIN_NUM_PIECES, self.MAX_NUM_PIECES = get_puzzle_limits(mode)
+
         self.initial_board_layout = self.puzzle.get_state()
         self.images = load_images(square_size)
         self.current_num_of_pieces = self.puzzle.board.count_pieces()
@@ -47,27 +31,47 @@ class PuzzleLogic:
         if num < self.MIN_NUM_PIECES or num > self.MAX_NUM_PIECES:
             return False
         self.current_num_of_pieces = num
-        with open(DATA_URL + f'chess_{self.mode}/puzzle_map.json') as json_data:
-            map_list = json.load(json_data)[str(num)]
-            json_data.close()
-        new_map = self.puzzle.board.export_board()
-        while new_map == self.puzzle.board.export_board():
-            new_map = random.choice(map_list)
-        self.puzzle.reset(new_map)
-        self.initial_board_layout = new_map
-        return True
+        
+        try:
+            with open(DATA_URL + f'chess_{self.mode}/puzzle_map.json') as json_data:
+                map_list = json.load(json_data).get(str(num), [])
+            
+            if not map_list:
+                blank_board = [[0 for _ in range(8)] for _ in range(8)]
+                self.puzzle.reset(blank_board)
+                self.initial_board_layout = blank_board
+                return True
+
+            # CASE: Maps found -> Pick one
+            new_map = self.puzzle.board.export_board()
+            if len(map_list) > 1:
+                while new_map == self.puzzle.board.export_board():
+                    new_map = random.choice(map_list)
+            else:
+                new_map = map_list[0]
+
+            self.puzzle.reset(new_map)
+            self.initial_board_layout = new_map
+            return True
+            
+        except Exception as e:
+            print(f"Error changing num pieces: {e}")
+            return False
 
     def change_map(self):
-        with open(DATA_URL + f'chess_{self.mode}/puzzle_map.json') as json_data:
-            map_list = json.load(json_data)[str(self.current_num_of_pieces)]
-            json_data.close()
-        new_map = self.puzzle.board.export_board()
-        if len(map_list) == 1 and map_list[0] == new_map:
-            return
-        while new_map == self.puzzle.board.export_board():
-            new_map = random.choice(map_list)
-        self.puzzle.reset(new_map)
-        self.initial_board_layout = copy.deepcopy(new_map)
+        try:
+            with open(DATA_URL + f'chess_{self.mode}/puzzle_map.json') as json_data:
+                map_list = json.load(json_data).get(str(self.current_num_of_pieces), [])
+            if not map_list: return
+            new_map = self.puzzle.board.export_board()
+            if len(map_list) == 1 and map_list[0] == new_map:
+                return
+            while new_map == self.puzzle.board.export_board():
+                new_map = random.choice(map_list)
+            self.puzzle.reset(new_map)
+            self.initial_board_layout = copy.deepcopy(new_map)
+        except Exception as e:
+            print(f"Error changing map: {e}")
 
     def reset(self):
         self.puzzle.reset(self.initial_board_layout)
@@ -111,12 +115,8 @@ class PuzzleScene(Scene):
         super().__init__(manager)
         self.update_screen()
         self.mode = mode
-        if mode == "ranger":
-            self.MIN_NUM_PIECES = CHESS_RANGER_MIN_NUM_PIECES
-            self.MAX_NUM_PIECES = CHESS_RANGER_MAX_NUM_PIECES
-        else:
-            self.MIN_NUM_PIECES = CHESS_MELEE_MIN_NUM_PIECES
-            self.MAX_NUM_PIECES = CHESS_MELEE_MAX_NUM_PIECES
+        self.MIN_NUM_PIECES, self.MAX_NUM_PIECES = get_puzzle_limits(mode)
+        
         self.drag_piece = None
         self.drag_origin = None
         self.dragging = False
