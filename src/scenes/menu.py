@@ -1,9 +1,14 @@
+import pygame
+import sys
+import json
+import random
+import os
+
 from src.scenes.scene import Scene
 from src.ui.element import *
 from settings import *
-
-import pygame
-import sys
+from src.utils.asset_loading import load_images
+from src.entities.figure import int_to_piece
 
 class MenuScene(Scene):
     def __init__(self, manager):
@@ -15,24 +20,76 @@ class MenuScene(Scene):
         logo_width, logo_height = logo_image.get_size()
 
         self.logo_image = Image(APP_IMG_URL + "logo.png", SCREEN_WIDTH // 20, SCREEN_HEIGHT // 12, (logo_width * 3 // 4, logo_height * 3 // 4))
-        self.chess_ranger_scene_button = ThemedButton("Chess Ranger Mode", SCREEN_WIDTH // 20 + logo_width * 3 // 8 - 200 , SCREEN_HEIGHT // 12 + logo_height * 3 // 4 - 20 + 100 * 1, 400, 60, font_size = 40, action = lambda: self.manager.switch_scene('puzzle', "ranger"))
-        self.chess_melee_scene_button = ThemedButton("Chess Melee Mode", SCREEN_WIDTH // 20 + logo_width * 3 // 8 - 200 , SCREEN_HEIGHT // 12 + logo_height * 3 // 4 - 20 + 100 * 2, 400, 60, font_size = 40, action = lambda: self.manager.switch_scene('puzzle', "melee"))
-        self.creator_button = ThemedButton("Map Creator", SCREEN_WIDTH // 20 + logo_width * 3 // 8 - 200, SCREEN_HEIGHT // 12 + logo_height * 3 // 4 - 20 + 100 * 3, 400, 60, font_size=40, action=lambda: self.manager.switch_scene('creator'))
-        self.credit_scene_button = ThemedButton("Credits", SCREEN_WIDTH // 20 + logo_width * 3 // 8 - 200 , SCREEN_HEIGHT // 12 + logo_height * 3 // 4 - 20 + 100 * 4, 400, 60, font_size = 40)
-        self.quit_button = ThemedButton("Quit", SCREEN_WIDTH // 20 + logo_width * 3 // 8 - 200, SCREEN_HEIGHT // 12 + logo_height * 3 // 4 - 20 + 100 * 5, 400, 60, font_size=40, action=self.quit)
+        btn_x = SCREEN_WIDTH // 20 + logo_width * 3 // 8 - 200
+        start_y = SCREEN_HEIGHT // 12 + logo_height * 3 // 4 - 20
+        spacing = 100
+        btn_w, btn_h = 400, 60
+
+        self.chess_ranger_scene_button = ThemedButton("Chess Ranger Mode", btn_x, start_y + spacing * 1, btn_w, btn_h, font_size=40, action=lambda: self.start_puzzle("ranger"))
+        self.chess_melee_scene_button = ThemedButton("Chess Melee Mode", btn_x, start_y + spacing * 2, btn_w, btn_h, font_size=40, action=lambda: self.start_puzzle("melee"))
+        self.creator_button = ThemedButton("Map Creator", btn_x, start_y + spacing * 3, btn_w, btn_h, font_size=40, action=lambda: self.manager.switch_scene('creator'))
+        self.credit_scene_button = ThemedButton("Credits", btn_x, start_y + spacing * 4, btn_w, btn_h, font_size=40)
+        self.quit_button = ThemedButton("Quit", btn_x, start_y + spacing * 5, btn_w, btn_h, font_size=40, action=self.quit)
+
+        self.ranger_rect = pygame.Rect(btn_x, start_y + spacing * 1, btn_w, btn_h)
+        self.melee_rect = pygame.Rect(btn_x, start_y + spacing * 2, btn_w, btn_h)
+
+        self.preview_size = min(SCREEN_WIDTH * 0.5, SCREEN_HEIGHT * 0.8)
+        self.preview_sq_size = self.preview_size // 8
+        self.preview_x = SCREEN_WIDTH * 0.5
+        self.preview_y = (SCREEN_HEIGHT - self.preview_size) // 2
+        
+        self.preview_images = load_images(self.preview_sq_size)
+        self.ranger_maps = self.load_maps("ranger")
+        self.melee_maps = self.load_maps("melee")
+        
+        self.hovered_mode = None
+        self.current_preview_map = None
+
+    def start_puzzle(self, mode):
+        starting_map = None
+        if self.hovered_mode == mode and self.current_preview_map:
+            starting_map = self.current_preview_map
+        self.manager.switch_scene('puzzle', mode, starting_map)
+
+    def load_maps(self, mode):
+        all_maps = []
+        try:
+            path = DATA_URL + f'chess_{mode}/puzzle_map.json'
+            if os.path.exists(path):
+                with open(path, 'r') as f:
+                    data = json.load(f)
+                    for key in data:
+                        all_maps.extend(data[key])
+        except Exception as e:
+            print(f"Error loading maps for preview: {e}")
+        return all_maps
 
     def update(self, event_list):
+        mouse_pos = pygame.mouse.get_pos()
+        target_mode = None
+
+        if self.ranger_rect.collidepoint(mouse_pos):
+            target_mode = "ranger"
+        elif self.melee_rect.collidepoint(mouse_pos):
+            target_mode = "melee"
+        
+        if target_mode != self.hovered_mode:
+            self.hovered_mode = target_mode
+            
+            if target_mode == "ranger" and self.ranger_maps:
+                self.current_preview_map = random.choice(self.ranger_maps)
+            elif target_mode == "melee" and self.melee_maps:
+                self.current_preview_map = random.choice(self.melee_maps)
+            else:
+                self.current_preview_map = None
+
         for event in event_list:
-            if self.chess_ranger_scene_button.check_click(event):
-                print("Switch to Chess Ranger Mode button clicked!")
-            elif self.chess_melee_scene_button.check_click(event):
-                print("Switch to Chess Melee Mode button clicked!")
-            elif self.creator_button.check_click(event):
-                print("Switch to Map Creator button clicked!")
-            elif self.credit_scene_button.check_click(event):
-                print("Switch to Credits button clicked!")
-            elif self.quit_button.check_click(event):
-                print("Quit button clicked!")
+            if self.chess_ranger_scene_button.check_click(event): pass
+            elif self.chess_melee_scene_button.check_click(event): pass
+            elif self.creator_button.check_click(event): pass
+            elif self.credit_scene_button.check_click(event): pass
+            elif self.quit_button.check_click(event): pass
                 
     def draw(self):
         screen = pygame.display.get_surface()
@@ -43,6 +100,29 @@ class MenuScene(Scene):
         self.creator_button.draw(screen)
         self.credit_scene_button.draw(screen)
         self.quit_button.draw(screen)
+
+        if self.hovered_mode and self.current_preview_map:
+            self.draw_preview_board(screen)
+
+    def draw_preview_board(self, screen):
+        border_rect = pygame.Rect(self.preview_x - 5, self.preview_y - 5, self.preview_size + 10, self.preview_size + 10)
+        pygame.draw.rect(screen, (50, 50, 50), border_rect)
+        
+        for r in range(8):
+            for c in range(8):
+                x = self.preview_x + c * self.preview_sq_size
+                y = self.preview_y + r * self.preview_sq_size
+                
+                color = COLOR_LIGHT if (r + c) % 2 == 0 else COLOR_DARK
+                pygame.draw.rect(screen, color, (x, y, self.preview_sq_size, self.preview_sq_size))
+                
+                code = self.current_preview_map[r][c]
+                if code != 0:
+                    piece_cls = int_to_piece[abs(code)]
+                    p_obj = piece_cls(code > 0)
+                    img_key = p_obj.get_short_name()
+                    if img_key in self.preview_images:
+                        screen.blit(self.preview_images[img_key], (x, y))
 
     def quit(self):
         pygame.quit()

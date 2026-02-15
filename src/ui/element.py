@@ -3,70 +3,67 @@ import sys
 
 from settings import *
 
-# --- Theme Colors (Matches a Chess/Puzzle Vibe) ---
+# --- Theme Colors ---
 THEME = {
-    'primary': (210, 180, 140),    # Tan/Wood
-    'shadow': (139, 69, 19),       # SaddleBrown (Darker wood)
-    'highlight': (255, 248, 220),  # Cornsilk (Lighter)
-    'text': (50, 30, 10),          # Dark Brown text
-    'box_bg': (30, 30, 30, 200)    # Dark transparent background for rules
+    'primary': (210, 180, 140),
+    'shadow': (139, 69, 19),
+    'highlight': (255, 248, 220),
+    'text': (50, 30, 10),
+    'box_bg': (30, 30, 30, 200)
 }
 
-class ThemedButton:
+class UIElement:
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(x, y, 0, 0)
+
+    def draw(self, screen):
+        pass
+
+    def update(self, event_list):
+        pass
+
+class ThemedButton(UIElement):
     def __init__(self, text, x, y, width, height, font_size=30, action=None):
+        super().__init__(x, y)
         self.rect = pygame.Rect(x, y, width, height)
         self.text = text
         self.action = action
-        
-        # Visuals
         self.font = pygame.font.Font(None, font_size)
-        self.elevation = 5  # Height of the "3D" effect
+        self.elevation = 5
         self.dynamic_elevation = self.elevation
         self.y_original = y
-
-        # State
         self.pressed = False
         self.hovered = False
 
     def draw(self, screen):
-        # 1. Update Logic (Hover & Click)
         mouse_pos = pygame.mouse.get_pos()
         self.hovered = self.rect.collidepoint(mouse_pos)
 
-        # 2. Calculate "3D" logic
-        # If clicked, "press" the button down (reduce elevation)
         if self.pressed:
             self.dynamic_elevation = 0
             curr_y = self.y_original + self.elevation
-            main_color = THEME['shadow'] # Darker when pressed
+            main_color = THEME['shadow']
         elif self.hovered:
             self.dynamic_elevation = self.elevation
             curr_y = self.y_original
-            main_color = THEME['highlight'] # Lighter when hovered
+            main_color = THEME['highlight']
         else:
             self.dynamic_elevation = self.elevation
             curr_y = self.y_original
             main_color = THEME['primary']
 
-        # 3. Draw Bottom Shadow (The "Side" of the button)
         shadow_rect = pygame.Rect(self.rect.x, self.y_original + self.elevation, self.rect.width, self.rect.height)
         pygame.draw.rect(screen, THEME['shadow'], shadow_rect, border_radius=12)
 
-        # 4. Draw Top Face (The clicky part)
-        # We move the visual rect up/down based on elevation
         self.top_rect = pygame.Rect(self.rect.x, curr_y, self.rect.width, self.rect.height)
         pygame.draw.rect(screen, main_color, self.top_rect, border_radius=12)
-        
-        # Border
         pygame.draw.rect(screen, THEME['text'], self.top_rect, 2, border_radius=12)
 
-        # 5. Draw Text
         text_surf = self.font.render(self.text, True, THEME['text'])
         text_rect = text_surf.get_rect(center=self.top_rect.center)
         screen.blit(text_surf, text_rect)
 
     def check_click(self, event):
-        """ Returns True if this button was clicked """
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.top_rect.collidepoint(event.pos):
                 self.pressed = True
@@ -78,32 +75,28 @@ class ThemedButton:
                 if self.top_rect.collidepoint(event.pos):
                     if self.action:
                         self.action()
-                    return True # Valid Click
+                    return True
         return False
 
-
-class RuleBox:
+class RuleBox(UIElement):
     def __init__(self, x, y, width, height, text_list):
+        super().__init__(x, y)
         self.rect = pygame.Rect(x, y, width, height)
-        self.text_list = text_list # A generic list of strings ["Rule 1...", "Rule 2..."]
+        self.text_list = text_list
         self.font = pygame.font.Font(None, 24)
         self.bg_color = THEME['box_bg']
         self.text_color = (240, 240, 240)
-        
-        # Pre-render the lines to save performance
         self.rendered_lines = self.wrap_text(self.text_list)
 
     def wrap_text(self, lines):
-        """ Breaks long lines into smaller ones that fit the box width """
         wrapped_lines = []
         for line in lines:
             words = line.split(' ')
             current_line = ""
             for word in words:
                 test_line = current_line + word + " "
-                # Check width of the line + new word
                 fw, fh = self.font.size(test_line)
-                if fw < self.rect.width - 20: # -20 for padding
+                if fw < self.rect.width - 20:
                     current_line = test_line
                 else:
                     wrapped_lines.append(current_line)
@@ -112,27 +105,20 @@ class RuleBox:
         return wrapped_lines
 
     def draw(self, screen):
-        # 1. Draw Transparent Background
-        # We need a separate surface to support alpha (transparency)
         s = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
         s.fill(self.bg_color) 
         screen.blit(s, (self.rect.x, self.rect.y))
-        
-        # 2. Draw Border
         pygame.draw.rect(screen, THEME['primary'], self.rect, 3)
 
-        # 3. Draw Text
-        y_offset = 15 # Top padding
+        y_offset = 15
         for line in self.rendered_lines:
             text_surf = self.font.render(line, True, self.text_color)
             screen.blit(text_surf, (self.rect.x + 10, self.rect.y + y_offset))
-            y_offset += 25 # Line height spacing
+            y_offset += 25
 
-class Image:
+class Image(UIElement):
     def __init__(self, image_url, x, y, size = None) -> None:
-        self.x = x
-        self.y = y
-        self.size = size
+        super().__init__(x, y)
         try:
             self.logo_image = pygame.image.load(image_url).convert_alpha()
             if size is not None:
@@ -142,12 +128,11 @@ class Image:
             sys.exit()
 
     def draw(self, screen):
-        screen.blit(self.logo_image, (self.x, self.y))
+        screen.blit(self.logo_image, (self.rect.x, self.rect.y))
 
-class ClickableImage:
-    def __init__(self, image_path, x, y, size=None, action=None):
-        self.x = x
-        self.y = y
+class ClickableImage(UIElement):
+    def __init__(self, image_path, x, y, size=None, action=None, func=None):
+        super().__init__(x, y)
         self.action = action  
         self.is_hovered = False
 
@@ -156,6 +141,11 @@ class ClickableImage:
             
             if size is not None:
                 self.surface = pygame.transform.smoothscale(self.surface, size)
+            
+            # Apply image processing function (e.g., colorize) if provided
+            if func:
+                self.surface = func(self.surface)
+
             width = self.surface.get_width()
             height = self.surface.get_height()
             self.hover_surface = pygame.transform.smoothscale(
@@ -180,46 +170,35 @@ class ClickableImage:
             screen.blit(self.surface, self.rect)
 
     def check_click(self, event):
-        """ Checks if the image was clicked and triggers the action """
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1: # Left click
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.rect.collidepoint(event.pos):
                 if self.action:
-                    self.action() # Run the assigned function
+                    self.action()
                 return True
         return False
     
-class NumberSelector:
-    def __init__(self, x, y, min_val, max_val, initial_val, left_img_path, right_img_path, left_action=None, right_action=None):
-        self.x = x
-        self.y = y
+class NumberSelector(UIElement):
+    def __init__(self, x, y, min_val, max_val, initial_val, left_img_path, right_img_path, left_action=None, right_action=None, image_func = None):
+        super().__init__(x, y)
         self.value = initial_val
         self.min_val = min_val
         self.max_val = max_val
         self.left_action = left_action
         self.right_action = right_action
-        
-        # Style Settings
         self.font = pygame.font.Font(None, 40)
         self.text_color = (255, 255, 255)
-        self.spacing = 20 # Space between buttons and text
+        self.spacing = 20 
         self.text_area_width = 60
 
         def decrease():
             if self.value > self.min_val:
                 self.value -= 1
-                self.update_text() # Refresh the text surface
+                self.update_text()
                 if self.left_action:
                     self.left_action(self.value)
 
-        self.btn_left = ClickableImage(
-            left_img_path, 
-            x, y, 
-            size=(40, 40), 
-            action=decrease
-        )
+        self.btn_left = ClickableImage(left_img_path, x, y, size=(40, 40), action=decrease, func=image_func)
 
-        self.text_area_width = 60
-        
         def increase():
             if self.value < self.max_val:
                 self.value += 1
@@ -228,42 +207,28 @@ class NumberSelector:
                     self.right_action(self.value)
 
         btn_right_x = x + 40 + self.spacing + self.text_area_width + self.spacing
-        self.btn_right = ClickableImage(
-            right_img_path, 
-            btn_right_x, y, 
-            size=(40, 40), 
-            action=increase
-        )
+        self.btn_right = ClickableImage(right_img_path, btn_right_x, y, size=(40, 40), action=increase, func=image_func)
 
         self.text_surf = None
         self.text_rect = None
         self.update_text()
 
     def update_text(self):
-        """ Renders the number text centered between the buttons """
         text_str = str(self.value)
         self.text_surf = self.font.render(text_str, True, self.text_color)
-        
-        start_x = self.x + 40 + self.spacing
+        start_x = self.btn_left.rect.x + 40 + self.spacing
         center_x = start_x + (self.text_area_width // 2)
-        center_y = self.y + 20 # Half of button height (40/2)
-        
+        center_y = self.btn_left.rect.y + 20 
         self.text_rect = self.text_surf.get_rect(center=(center_x, center_y))
 
     def handle_event(self, event):
-        """ Passes the event down to the child buttons """
         self.btn_left.check_click(event)
         self.btn_right.check_click(event)
 
     def draw(self, screen):
-        # Draw Left Button
         self.btn_left.draw(screen)
-        
-        # Draw Text
         if self.text_surf:
             screen.blit(self.text_surf, self.text_rect)
-            
-        # Draw Right Button
         self.btn_right.draw(screen)
         
     def get_value(self):
@@ -374,4 +339,22 @@ class FeedbackToast:
         screen.blit(s, (self.x, self.y)) 
         pygame.draw.rect(screen, self.border_color, rect, 2)
         text_rect = text_surf.get_rect(center=rect.center)
+        screen.blit(text_surf, text_rect)
+
+class LabelBox(UIElement):
+    def __init__(self, text, x, y, width, height, font_size=30):
+        super().__init__(x, y)
+        self.rect = pygame.Rect(x, y, width, height)
+        self.text = text
+        self.font = pygame.font.SysFont("arial", font_size, bold=True)
+        self.bg_color = COLOR_LIGHT # Using your requested color
+        self.border_color = COLOR_DARK
+        self.text_color = THEME['text']
+
+    def draw(self, screen):
+        pygame.draw.rect(screen, self.bg_color, self.rect, border_radius=8)
+        pygame.draw.rect(screen, self.border_color, self.rect, 2, border_radius=8)
+        
+        text_surf = self.font.render(self.text, True, self.text_color)
+        text_rect = text_surf.get_rect(center=self.rect.center)
         screen.blit(text_surf, text_rect)

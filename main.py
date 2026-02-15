@@ -14,11 +14,12 @@ except AttributeError:
 
 class ChessPuzzleEnv:
     def __init__(self):
+        os.environ['SDL_VIDEO_WINDOW_POS'] = "0,0"
         pygame.init()
-        self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        self.screen = pygame.display.set_mode((0, 0), pygame.NOFRAME)
         pygame.display.set_caption("Chess Puzzle")
         self.clock = pygame.time.Clock()
-        self.scene_manager = SceneManager() # The brain
+        self.scene_manager = SceneManager()
 
     def run(self):
         while True:

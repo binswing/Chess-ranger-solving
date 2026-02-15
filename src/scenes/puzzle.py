@@ -3,39 +3,23 @@ import json
 import random
 import time
 import copy
+import os
 
 from src.scenes.scene import Scene
-# from src.logic import GameLogic  # Your existing logic class!
 from settings import *
-from src.utils.asset_loading import load_images
+from src.utils.asset_loading import load_images, get_puzzle_limits, colorize_image
 from src.ui.element import *
 from src.ui.algorithm_handler import AlgorithmHandler
 from src.entities.chess import ChessPuzzle
 
-with open(DATA_URL + 'chess_ranger/puzzle_map.json') as json_data:
-    chess_ranger_num_pieces_list = list(map(lambda x: int(x), json.load(json_data).keys()))
-    json_data.close()
-
-CHESS_RANGER_MIN_NUM_PIECES = min(chess_ranger_num_pieces_list)
-CHESS_RANGER_MAX_NUM_PIECES = max(chess_ranger_num_pieces_list)
-
-with open(DATA_URL + 'chess_melee/puzzle_map.json') as json_data:
-    chess_melee_num_pieces_list = list(map(lambda x: int(x), json.load(json_data).keys()))
-    json_data.close()
-
-CHESS_MELEE_MIN_NUM_PIECES = min(chess_melee_num_pieces_list)
-CHESS_MELEE_MAX_NUM_PIECES = max(chess_melee_num_pieces_list)
 
 class PuzzleLogic:
     def __init__(self, mode, square_size, board_layout: list[list[int]] | None = None):
         self.mode = mode
         self.puzzle = ChessPuzzle(mode, board_layout)
-        if mode == "ranger":
-            self.MIN_NUM_PIECES = CHESS_RANGER_MIN_NUM_PIECES
-            self.MAX_NUM_PIECES = CHESS_RANGER_MAX_NUM_PIECES
-        else:
-            self.MIN_NUM_PIECES = CHESS_MELEE_MIN_NUM_PIECES
-            self.MAX_NUM_PIECES = CHESS_MELEE_MAX_NUM_PIECES
+
+        self.MIN_NUM_PIECES, self.MAX_NUM_PIECES = get_puzzle_limits(mode)
+
         self.initial_board_layout = self.puzzle.get_state()
         self.images = load_images(square_size)
         self.current_num_of_pieces = self.puzzle.board.count_pieces()
@@ -47,27 +31,46 @@ class PuzzleLogic:
         if num < self.MIN_NUM_PIECES or num > self.MAX_NUM_PIECES:
             return False
         self.current_num_of_pieces = num
-        with open(DATA_URL + f'chess_{self.mode}/puzzle_map.json') as json_data:
-            map_list = json.load(json_data)[str(num)]
-            json_data.close()
-        new_map = self.puzzle.board.export_board()
-        while new_map == self.puzzle.board.export_board():
-            new_map = random.choice(map_list)
-        self.puzzle.reset(new_map)
-        self.initial_board_layout = new_map
-        return True
+        
+        try:
+            with open(DATA_URL + f'chess_{self.mode}/puzzle_map.json') as json_data:
+                map_list = json.load(json_data).get(str(num), [])
+            
+            if not map_list:
+                blank_board = [[0 for _ in range(8)] for _ in range(8)]
+                self.puzzle.reset(blank_board)
+                self.initial_board_layout = blank_board
+                return True
+
+            new_map = self.puzzle.board.export_board()
+            if len(map_list) > 1:
+                while new_map == self.puzzle.board.export_board():
+                    new_map = random.choice(map_list)
+            else:
+                new_map = map_list[0]
+
+            self.puzzle.reset(new_map)
+            self.initial_board_layout = new_map
+            return True
+            
+        except Exception as e:
+            print(f"Error changing num pieces: {e}")
+            return False
 
     def change_map(self):
-        with open(DATA_URL + f'chess_{self.mode}/puzzle_map.json') as json_data:
-            map_list = json.load(json_data)[str(self.current_num_of_pieces)]
-            json_data.close()
-        new_map = self.puzzle.board.export_board()
-        if len(map_list) == 1 and map_list[0] == new_map:
-            return
-        while new_map == self.puzzle.board.export_board():
-            new_map = random.choice(map_list)
-        self.puzzle.reset(new_map)
-        self.initial_board_layout = copy.deepcopy(new_map)
+        try:
+            with open(DATA_URL + f'chess_{self.mode}/puzzle_map.json') as json_data:
+                map_list = json.load(json_data).get(str(self.current_num_of_pieces), [])
+            if not map_list: return
+            new_map = self.puzzle.board.export_board()
+            if len(map_list) == 1 and map_list[0] == new_map:
+                return
+            while new_map == self.puzzle.board.export_board():
+                new_map = random.choice(map_list)
+            self.puzzle.reset(new_map)
+            self.initial_board_layout = copy.deepcopy(new_map)
+        except Exception as e:
+            print(f"Error changing map: {e}")
 
     def reset(self):
         self.puzzle.reset(self.initial_board_layout)
@@ -107,22 +110,18 @@ class PuzzleLogic:
         return self.current_num_of_pieces
         
 class PuzzleScene(Scene):
-    def __init__(self, manager, mode):
+    def __init__(self, manager, mode, initial_map=None):
         super().__init__(manager)
         self.update_screen()
         self.mode = mode
-        if mode == "ranger":
-            self.MIN_NUM_PIECES = CHESS_RANGER_MIN_NUM_PIECES
-            self.MAX_NUM_PIECES = CHESS_RANGER_MAX_NUM_PIECES
-        else:
-            self.MIN_NUM_PIECES = CHESS_MELEE_MIN_NUM_PIECES
-            self.MAX_NUM_PIECES = CHESS_MELEE_MAX_NUM_PIECES
+        self.MIN_NUM_PIECES, self.MAX_NUM_PIECES = get_puzzle_limits(mode)
+        
         self.drag_piece = None
         self.drag_origin = None
         self.dragging = False
         self.valid_moves = []
         self.mouse_pos = (0, 0)
-        self.logic = PuzzleLogic(mode, self.SQUARE_SIZE)
+        self.logic = PuzzleLogic(mode, self.SQUARE_SIZE, initial_map)
 
         self.animating = False
         self.anim_piece = None      
@@ -144,36 +143,57 @@ class PuzzleScene(Scene):
         with open(DATA_URL + 'puzzle_info.json') as json_data:
             rules = json.load(json_data)[f"chess_{self.mode}"]["rules"]
 
-        self.return_image = ClickableImage(APP_IMG_URL + "return.png", self.SCREEN_WIDTH // 32, self.MARGIN, (self.SCREEN_WIDTH // 32, self.SCREEN_WIDTH // 32), action = lambda: self.manager.switch_scene('menu'))
+        self.return_image = ClickableImage(APP_IMG_URL + "return.png", self.SCREEN_WIDTH // 32, self.MARGIN, (self.SCREEN_WIDTH // 32, self.SCREEN_WIDTH // 32), action = lambda: self.manager.switch_scene('menu'), func = lambda image: colorize_image(image, COLOR_DARK))
 
         btn_x = self.LEFT_MARGIN // 2 - self.SCREEN_WIDTH // 10
         btn_width = self.SCREEN_WIDTH // 5
         btn_height = 60
-        start_y = self.MARGIN + self.SCREEN_HEIGHT // 8
+        start_y = self.MARGIN + self.SCREEN_HEIGHT // 5
         spacing = 20
+    
+        selector_x = self.LEFT_MARGIN // 2 - self.SCREEN_WIDTH // 20
+        selector_y = start_y
         
+        self.pieces_label_font = pygame.font.SysFont("tahoma", 45, bold=True)
+        self.pieces_label_surf = self.pieces_label_font.render("Number of pieces", True, COLOR_LIGHT)
+        self.pieces_label_pos = (selector_x - 100, selector_y - 80)
+
         self.num_of_pieces_selector = NumberSelector(
-            self.SCREEN_WIDTH // 40, start_y + 20, 
+            selector_x, selector_y, 
             self.MIN_NUM_PIECES, self.MAX_NUM_PIECES, self.logic.get_num_of_pieces(), 
             APP_IMG_URL + "left-arrow.png", APP_IMG_URL + "right-arrow.png", 
-            self.handle_num_of_pieces, self.handle_num_of_pieces
+            self.handle_num_of_pieces, self.handle_num_of_pieces,
+            image_func=lambda image: colorize_image(image, COLOR_DARK)
         )
         
         self.change_map_button = ThemedButton("Change Map", btn_x, start_y + 120, btn_width, btn_height, font_size=40, action=self.handle_change_map)
-        self.reset_button = ThemedButton("Reset", btn_x, start_y + 120 + btn_height + spacing, btn_width, btn_height, font_size=40, action=self.handle_reset)
+        self.reset_button = ThemedButton("Start over", btn_x, start_y + 120 + btn_height + spacing, btn_width, btn_height, font_size=40, action=self.handle_reset)
 
-        algo_start_y = start_y + 120 + (btn_height + spacing) * 2 + 20
+        algo_start_y = start_y + 120 + (btn_height + spacing) * 2 + 40
+        row_height = 80
+        icon_size = (60, 60)
         
-        self.A_star_solve_button = ThemedButton("A* Solve", btn_x, algo_start_y, btn_width, btn_height, font_size=40, action=lambda: self.algorithm_handler.start_search("A*"))
-        self.A_star_play_btn = ThemedButton("Play A*", btn_x, algo_start_y + btn_height + 5, btn_width, btn_height, font_size=40, action=lambda: self.start_solution_playback("A*"))
+        label_w = self.SCREEN_WIDTH // 8
+        total_w = label_w + 20 + icon_size[0] + 20 + icon_size[0]
+        
+        self.label_x = btn_x + (btn_width - total_w) // 2 + 8
+        self.search_x = self.label_x + label_w + 11
+        self.play_x = self.search_x + icon_size[0] + 11
+        
+        self.astar_y = algo_start_y
+        self.astar_label = LabelBox("A* algorithm", self.label_x, self.astar_y + 10, label_w, self.SCREEN_HEIGHT // 25, font_size=28)
+        self.astar_search_btn = ClickableImage(APP_IMG_URL + "search.png", self.search_x, self.astar_y, icon_size, action=lambda: self.handle_search("A*"), func = lambda image: colorize_image(image, COLOR_DARK))
+        self.astar_play_btn = ClickableImage(APP_IMG_URL + "play.png", self.play_x, self.astar_y, icon_size, action=lambda: self.start_solution_playback("A*"), func = lambda image: colorize_image(image, COLOR_DARK))
 
-        bfs_y = algo_start_y + (btn_height * 2) + spacing
-        self.BFS_solve_button = ThemedButton("BFS Solve", btn_x, bfs_y, btn_width, btn_height, font_size=40, action=lambda: self.algorithm_handler.start_search("BFS"))
-        self.BFS_play_btn = ThemedButton("Play BFS", btn_x, bfs_y + btn_height + 5, btn_width, btn_height, font_size=40, action=lambda: self.start_solution_playback("BFS"))
-        
-        dfs_y = bfs_y + (btn_height * 2) + spacing
-        self.DFS_solve_button = ThemedButton("DFS Solve", btn_x, dfs_y, btn_width, btn_height, font_size=35, action=lambda: self.algorithm_handler.start_search("DFS"))
-        self.DFS_play_btn = ThemedButton("Play DFS", btn_x, dfs_y + btn_height + 5, btn_width, btn_height, font_size=35, action=lambda: self.start_solution_playback("DFS"))
+        self.bfs_y = algo_start_y + row_height
+        self.bfs_label = LabelBox("BFS algorithm", self.label_x, self.bfs_y + 10, label_w, 40, font_size=28)
+        self.bfs_search_btn = ClickableImage(APP_IMG_URL + "search.png", self.search_x, self.bfs_y, icon_size, action=lambda: self.handle_search("BFS"), func = lambda image: colorize_image(image, COLOR_DARK))
+        self.bfs_play_btn = ClickableImage(APP_IMG_URL + "play.png", self.play_x, self.bfs_y, icon_size, action=lambda: self.start_solution_playback("BFS"), func = lambda image: colorize_image(image, COLOR_DARK))
+
+        self.dfs_y = algo_start_y + row_height * 2
+        self.dfs_label = LabelBox("DFS algorithm", self.label_x, self.dfs_y + 10, label_w, 40, font_size=28)
+        self.dfs_search_btn = ClickableImage(APP_IMG_URL + "search.png", self.search_x, self.dfs_y, icon_size, action=lambda: self.handle_search("DFS"), func = lambda image: colorize_image(image, COLOR_DARK))
+        self.dfs_play_btn = ClickableImage(APP_IMG_URL + "play.png", self.play_x, self.dfs_y, icon_size, action=lambda: self.start_solution_playback("DFS"), func = lambda image: colorize_image(image, COLOR_DARK))
 
         rule_box_x = self.SCREEN_WIDTH - self.SCREEN_WIDTH // 40 - self.SCREEN_WIDTH // 5
         self.rule_box = RuleBox(rule_box_x, self.MARGIN , self.SCREEN_WIDTH // 5, self.SCREEN_HEIGHT // 8, rules)
@@ -216,16 +236,18 @@ class PuzzleScene(Scene):
         for event in event_list:
             if self.animating: continue 
 
-            if self.algorithm_handler.has_solution("A*") and self.A_star_play_btn.check_click(event): pass
-            if self.algorithm_handler.has_solution("BFS") and self.BFS_play_btn.check_click(event): pass
-            if self.algorithm_handler.has_solution("DFS") and self.DFS_play_btn.check_click(event): pass
             if self.return_image.check_click(event): pass
             elif self.change_map_button.check_click(event): pass 
             elif self.reset_button.check_click(event): pass
-            elif self.A_star_solve_button.check_click(event): pass
-            elif self.BFS_solve_button.check_click(event): pass
-            elif self.DFS_solve_button.check_click(event): pass
             elif self.num_of_pieces_selector.handle_event(event): pass
+
+            elif self.astar_search_btn.check_click(event): pass
+            elif self.bfs_search_btn.check_click(event): pass
+            elif self.dfs_search_btn.check_click(event): pass
+    
+            elif self.algorithm_handler.has_solution("A*") and self.astar_play_btn.check_click(event): pass
+            elif self.algorithm_handler.has_solution("BFS") and self.bfs_play_btn.check_click(event): pass
+            elif self.algorithm_handler.has_solution("DFS") and self.dfs_play_btn.check_click(event): pass
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
@@ -258,21 +280,27 @@ class PuzzleScene(Scene):
         
         self.rule_box.draw(screen)
         self.return_image.draw(screen)
+        screen.blit(self.pieces_label_surf, self.pieces_label_pos)
         self.num_of_pieces_selector.draw(screen)
         self.change_map_button.draw(screen)
         self.reset_button.draw(screen)
         
-        self.A_star_solve_button.draw(screen)
-        self.BFS_solve_button.draw(screen)
         self.algorithm_handler.draw(screen) 
-        self.DFS_solve_button.draw(screen)
+
+        self.astar_label.draw(screen)
+        self.bfs_label.draw(screen)
+        self.dfs_label.draw(screen)
+        
+        self.astar_search_btn.draw(screen)
+        self.bfs_search_btn.draw(screen)
+        self.dfs_search_btn.draw(screen)
 
         if self.algorithm_handler.has_solution("A*"):
-            self.A_star_play_btn.draw(screen)
+            self.astar_play_btn.draw(screen)
         if self.algorithm_handler.has_solution("BFS"):
-            self.BFS_play_btn.draw(screen)
+            self.bfs_play_btn.draw(screen)
         if self.algorithm_handler.has_solution("DFS"):
-            self.DFS_play_btn.draw(screen)
+            self.dfs_play_btn.draw(screen)
 
         if self.animating and self.anim_piece:
             img = self.logic.get_image(self.anim_piece)
@@ -319,6 +347,10 @@ class PuzzleScene(Scene):
         self.is_playing_solution = False
         self.game_won = False
 
+    def handle_search(self, algorithm_name):
+        self.handle_reset()
+        self.algorithm_handler.start_search(algorithm_name)
+
     def handle_reset(self):
         self.logic.reset()
         self.animating = False
@@ -338,6 +370,7 @@ class PuzzleScene(Scene):
         self.logic.reset()
         self.playback_queue = list(self.algorithm_handler.get_solution_path(algorithm_name))
         self.is_playing_solution = True
+        self.game_won = False
 
     def get_square_under_mouse(self, pos):
         x, y = pos
