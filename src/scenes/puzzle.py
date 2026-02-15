@@ -85,8 +85,9 @@ class PuzzleLogic:
             if state is None and move is None:
                 break
             
-            self.puzzle.set_state(state)
-            scene.trigger_move((move[0], move[1]), (move[2], move[3]))
+            if SEARCH_ANIMATION:
+                self.puzzle.set_state(state)
+                scene.trigger_move((move[0], move[1]), (move[2], move[3]), SEARCH_ANIMATION_DURATION)
             
             iterations += 1
             if iterations > 10000:
@@ -129,7 +130,6 @@ class PuzzleScene(Scene):
         self.anim_end_pos = None
         self.final_move_data = (0,0,0,0)  
         self.anim_start_time = 0
-        self.ANIMATION_DURATION = 250 
         self.current_anim_pos = pygame.math.Vector2(0, 0)
         
         self.is_playing_solution = False
@@ -215,7 +215,7 @@ class PuzzleScene(Scene):
         if self.animating:
             current_time = pygame.time.get_ticks()
             time_passed = current_time - self.anim_start_time
-            progress = time_passed / self.ANIMATION_DURATION
+            progress = time_passed / self.duration
 
             if progress >= 1.0:
                 self.animating = False
@@ -229,7 +229,7 @@ class PuzzleScene(Scene):
         if self.is_playing_solution and not self.animating:
             if self.playback_queue:
                 next_move = self.playback_queue.pop(0)
-                self.trigger_move((next_move[0], next_move[1]), (next_move[2], next_move[3]))
+                self.trigger_move((next_move[0], next_move[1]), (next_move[2], next_move[3]), PLAY_ANIMATION_DURATION)
             else:
                 self.is_playing_solution = False
 
@@ -324,13 +324,14 @@ class PuzzleScene(Scene):
         self.animating = False
         self.logic.reset()
 
-    def trigger_move(self, start_grid_pos, end_grid_pos):
+    def trigger_move(self, start_grid_pos, end_grid_pos, duration=100):
         r1, c1 = start_grid_pos
         r2, c2 = end_grid_pos
         piece = self.logic.get_board()[r1][c1]
         if piece == '--': return
 
         self.animating = True
+        self.duration = duration
         self.anim_piece = piece
         self.anim_start_time = pygame.time.get_ticks()
 
