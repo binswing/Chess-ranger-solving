@@ -3,11 +3,13 @@ from src.scenes.scene import Scene
 from src.scenes.menu import MenuScene
 from src.scenes.puzzle import PuzzleScene
 from src.scenes.map_creator import MapCreatorScene
+from src.scenes.settings import SettingsScene
 
 SCENES: dict[str, type[Scene]]= {
     'menu': MenuScene,
     'puzzle': PuzzleScene,
-    'creator': MapCreatorScene
+    'creator': MapCreatorScene,
+    'settings': SettingsScene
 }
 
 class SceneManager:

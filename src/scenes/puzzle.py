@@ -6,6 +6,7 @@ import copy
 import os
 
 from src.scenes.scene import Scene
+import settings
 from settings import *
 from src.utils.asset_loading import load_images, get_puzzle_limits, colorize_image
 from src.ui.element import *
@@ -85,9 +86,9 @@ class PuzzleLogic:
             if state is None and move is None:
                 break
             
-            if SEARCH_ANIMATION:
+            if settings.SEARCH_ANIMATION:
                 self.puzzle.set_state(state)
-                scene.trigger_move((move[0], move[1]), (move[2], move[3]), SEARCH_ANIMATION_DURATION)
+                scene.trigger_move((move[0], move[1]), (move[2], move[3]), settings.SEARCH_ANIMATION_DURATION)
             
             iterations += 1
             if iterations > 10000:
@@ -229,7 +230,7 @@ class PuzzleScene(Scene):
         if self.is_playing_solution and not self.animating:
             if self.playback_queue:
                 next_move = self.playback_queue.pop(0)
-                self.trigger_move((next_move[0], next_move[1]), (next_move[2], next_move[3]), PLAY_ANIMATION_DURATION)
+                self.trigger_move((next_move[0], next_move[1]), (next_move[2], next_move[3]), settings.PLAY_ANIMATION_DURATION)
             else:
                 self.is_playing_solution = False
 

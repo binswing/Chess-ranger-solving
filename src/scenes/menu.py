@@ -22,14 +22,15 @@ class MenuScene(Scene):
         self.logo_image = Image(APP_IMG_URL + "logo.png", SCREEN_WIDTH // 20, SCREEN_HEIGHT // 12, (logo_width * 3 // 4, logo_height * 3 // 4))
         btn_x = SCREEN_WIDTH // 20 + logo_width * 3 // 8 - 200
         start_y = SCREEN_HEIGHT // 12 + logo_height * 3 // 4 - 20
-        spacing = 100
+        spacing = 80
         btn_w, btn_h = 400, 60
 
         self.chess_ranger_scene_button = ThemedButton("Chess Ranger Mode", btn_x, start_y + spacing * 1, btn_w, btn_h, font_size=40, action=lambda: self.start_puzzle("ranger"))
         self.chess_melee_scene_button = ThemedButton("Chess Melee Mode", btn_x, start_y + spacing * 2, btn_w, btn_h, font_size=40, action=lambda: self.start_puzzle("melee"))
         self.creator_button = ThemedButton("Map Creator", btn_x, start_y + spacing * 3, btn_w, btn_h, font_size=40, action=lambda: self.manager.switch_scene('creator'))
-        self.credit_scene_button = ThemedButton("Credits", btn_x, start_y + spacing * 4, btn_w, btn_h, font_size=40)
-        self.quit_button = ThemedButton("Quit", btn_x, start_y + spacing * 5, btn_w, btn_h, font_size=40, action=self.quit)
+        self.settings_button = ThemedButton("Settings", btn_x, start_y + spacing * 4, btn_w, btn_h, font_size=40, action=lambda: self.manager.switch_scene('settings'))
+        self.credit_scene_button = ThemedButton("Credits", btn_x, start_y + spacing * 5, btn_w, btn_h, font_size=40)
+        self.quit_button = ThemedButton("Quit", btn_x, start_y + spacing * 6, btn_w, btn_h, font_size=40, action=self.quit)
 
         self.ranger_rect = pygame.Rect(btn_x, start_y + spacing * 1, btn_w, btn_h)
         self.melee_rect = pygame.Rect(btn_x, start_y + spacing * 2, btn_w, btn_h)
@@ -88,6 +89,7 @@ class MenuScene(Scene):
             if self.chess_ranger_scene_button.check_click(event): pass
             elif self.chess_melee_scene_button.check_click(event): pass
             elif self.creator_button.check_click(event): pass
+            elif self.settings_button.check_click(event): pass
             elif self.credit_scene_button.check_click(event): pass
             elif self.quit_button.check_click(event): pass
                 
@@ -98,6 +100,7 @@ class MenuScene(Scene):
         self.chess_ranger_scene_button.draw(screen)
         self.chess_melee_scene_button.draw(screen)
         self.creator_button.draw(screen)
+        self.settings_button.draw(screen)
         self.credit_scene_button.draw(screen)
         self.quit_button.draw(screen)
 

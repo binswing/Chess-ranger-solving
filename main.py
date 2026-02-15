@@ -3,6 +3,7 @@ import os
 import ctypes
 import sys
 
+import settings
 from settings import *
 from src.scene_manager import SceneManager
 # --- PREVENT STRETCHING/BLURRING (Windows Fix) ---
@@ -35,7 +36,7 @@ class ChessPuzzleEnv:
             self.scene_manager.run(event_list)
             
             pygame.display.update()
-            self.clock.tick(FPS)
+            self.clock.tick(settings.FPS)
 
 if __name__ == '__main__':
     game = ChessPuzzleEnv()

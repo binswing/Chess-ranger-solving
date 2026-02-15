@@ -19,7 +19,7 @@ class UIElement:
     def draw(self, screen):
         pass
 
-    def update(self, event_list):
+    def update(self):
         pass
 
 class ThemedButton(UIElement):
@@ -234,7 +234,7 @@ class NumberSelector(UIElement):
     def get_value(self):
         return self.value
 
-class StatsPanel:
+class StatsPanel(UIElement):
     def __init__(self, x, y, width, font_size=30, text_list:list[str]=[]):
         self.rect = pygame.Rect(x, y, width, 0)
         self.font = pygame.font.Font(None, font_size)
@@ -301,7 +301,7 @@ class StatsPanel:
             screen.blit(surf, (self.rect.x + self.side_padding, self.rect.y + y_offset))
             y_offset += self.line_height
 
-class FeedbackToast:
+class FeedbackToast(UIElement):
     def __init__(self, x, y, min_width=200):
         self.x = x
         self.y = y
@@ -347,7 +347,7 @@ class LabelBox(UIElement):
         self.rect = pygame.Rect(x, y, width, height)
         self.text = text
         self.font = pygame.font.SysFont("arial", font_size, bold=True)
-        self.bg_color = COLOR_LIGHT # Using your requested color
+        self.bg_color = COLOR_LIGHT
         self.border_color = COLOR_DARK
         self.text_color = THEME['text']
 
@@ -358,3 +358,86 @@ class LabelBox(UIElement):
         text_surf = self.font.render(self.text, True, self.text_color)
         text_rect = text_surf.get_rect(center=self.rect.center)
         screen.blit(text_surf, text_rect)
+
+class Slider(UIElement):
+    def __init__(self, x, y, width, min_val, max_val, initial_val, action=None):
+        super().__init__(x, y)
+        self.rect = pygame.Rect(x, y, width, 10)
+        self.min_val = min_val
+        self.max_val = max_val
+        self.value = initial_val
+        self.action = action
+        self.dragging = False
+        pct = (self.value - self.min_val) / (self.max_val - self.min_val)
+        knob_x = self.rect.x + (self.rect.width * pct)
+        self.knob_rect = pygame.Rect(knob_x - 10, y - 10, 20, 30)
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                if self.knob_rect.collidepoint(event.pos) or self.rect.inflate(0, 20).collidepoint(event.pos):
+                    self.dragging = True
+                    self.update_from_mouse(event.pos[0])
+                    return True
+        
+        elif event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 1:
+                self.dragging = False
+                
+        elif event.type == pygame.MOUSEMOTION:
+            if self.dragging:
+                self.update_from_mouse(event.pos[0])
+                return True
+        return False
+
+    def update_from_mouse(self, mouse_x):
+        x = max(self.rect.left, min(mouse_x, self.rect.right))
+        self.knob_rect.centerx = x
+        
+        pct = (x - self.rect.left) / self.rect.width
+        self.value = int(self.min_val + (self.max_val - self.min_val) * pct)
+        
+        if self.action:
+            self.action(self.value)
+
+    def draw(self, screen):
+        pygame.draw.rect(screen, (100, 100, 100), self.rect, border_radius=5)
+        
+        pygame.draw.rect(screen, THEME['primary'], self.knob_rect, border_radius=5)
+        pygame.draw.rect(screen, THEME['text'], self.knob_rect, 2, border_radius=5)
+
+class ToggleSwitch(UIElement):
+    def __init__(self, x, y, width, height, initial_state, on_toggle=None):
+        super().__init__(x, y)
+        self.rect = pygame.Rect(x, y, width, height)
+        self.state = initial_state
+        self.on_toggle = on_toggle
+        self.slide_pos = 1.0 if self.state else 0.0 
+
+    def update(self):
+        target = 1.0 if self.state else 0.0
+        if self.slide_pos < target: self.slide_pos = min(target, self.slide_pos + 0.1)
+        elif self.slide_pos > target: self.slide_pos = max(target, self.slide_pos - 0.1)
+
+    def draw(self, screen):
+        self.update()
+        bg_color = (100, 200, 100) if self.state else (200, 100, 100)
+        pygame.draw.rect(screen, bg_color, self.rect, border_radius=self.rect.height//2)
+        pygame.draw.rect(screen, (50, 50, 50), self.rect, 2, border_radius=self.rect.height//2)
+        
+        padding = 4
+        knob_size = self.rect.height - (padding * 2)
+        min_x = self.rect.x + padding
+        max_x = self.rect.x + self.rect.width - padding - knob_size
+        current_x = min_x + (max_x - min_x) * self.slide_pos
+        
+        knob_rect = pygame.Rect(current_x, self.rect.y + padding, knob_size, knob_size)
+        pygame.draw.ellipse(screen, (255, 255, 255), knob_rect)
+
+    def check_click(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.rect.collidepoint(event.pos):
+                self.state = not self.state
+                if self.on_toggle: self.on_toggle(self.state)
+                return True
+        return False
