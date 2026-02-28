@@ -298,7 +298,7 @@ class PuzzleScene(Scene):
                         if reward != -10: 
                             move_made = True
                             if done: 
-                                if info["msg"] == "Solved":
+                                if info["msg"] == "Solved!":
                                      self.game_won = True
                     self.dragging = False
                     self.drag_piece = None
