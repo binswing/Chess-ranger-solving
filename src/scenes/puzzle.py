@@ -297,7 +297,9 @@ class PuzzleScene(Scene):
                         obs, reward, done, info = self.logic.step((self.drag_origin[0], self.drag_origin[1], row, col))
                         if reward != -10: 
                             move_made = True
-                            if done: self.game_won = True
+                            if done: 
+                                if info["msg"] == "Solved":
+                                     self.game_won = True
                     self.dragging = False
                     self.drag_piece = None
                     if move_made:

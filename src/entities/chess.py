@@ -2,7 +2,15 @@ import numpy as np
 from src.entities.figure import *
 
 class ChessRangerBoard(Board): # Only white pieces
-    pass
+    def import_board(self, board: list[list[int]]) -> None:
+        self.board = []
+        for row in board:
+            self.board.append([])
+            for piece in row:
+                if piece == 0:
+                    self.board[-1].append(None)
+                else:
+                    self.board[-1].append(int_to_piece[abs(piece)](True))
     
 class ChessMeleeBoard(Board):
     def __init__(self, board: list[list[int]] = [[0 for _ in range(8)] for _ in range(8)]) -> None:
@@ -84,7 +92,6 @@ MODE={
 
 class ChessPuzzle:
     def __init__(self, mode, board_layout: list[list[int]] | dict | None = None):
-        super().__init__()
         if mode not in MODE:
             mode = "ranger"
 
