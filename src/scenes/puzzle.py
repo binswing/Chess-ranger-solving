@@ -14,12 +14,6 @@ from src.ui.algorithm_handler import AlgorithmHandler
 from src.entities.chess import ChessPuzzle
 
 def darken_image(image_surface, factor=0.5):
-    """
-    Làm tối một surface
-    factor = 0.0: giữ nguyên
-    factor = 0.3: tối 30% (đã đi 1 lần)
-    factor = 0.7: tối 70% (đã đi 2 lần - hết lượt)
-    """
     dark_surface = image_surface.copy()
     dark_surface.fill((0, 0, 0, int(255 * factor)), special_flags=pygame.BLEND_RGBA_MULT)
     return dark_surface
@@ -379,6 +373,7 @@ class PuzzleScene(Scene):
         start_y = self.BOARD_Y + (r1 * self.SQUARE_SIZE)
         self.anim_start_pos = pygame.math.Vector2(start_x, start_y)
         self.anim_end_pos = pygame.math.Vector2(self.BOARD_X + c2*self.SQUARE_SIZE, self.BOARD_Y + r2*self.SQUARE_SIZE)
+        self.current_anim_pos = self.anim_start_pos.copy()
         self.final_move_data = (r1, c1, r2, c2)
 
     def handle_change_map(self):
