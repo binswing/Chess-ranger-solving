@@ -2,7 +2,15 @@ import numpy as np
 from src.entities.figure import *
 import copy
 class ChessRangerBoard(Board): 
-    pass
+    def import_board(self, board: list[list[int]]) -> None:
+        self.board = []
+        for row in board:
+            self.board.append([])
+            for piece in row:
+                if piece == 0:
+                    self.board[-1].append(None)
+                else:
+                    self.board[-1].append(int_to_piece[abs(piece)](True))
     
 class ChessMeleeBoard(Board):
     def __init__(self, board: list[list[int]] = [[0 for _ in range(8)] for _ in range(8)]) -> None:
@@ -70,7 +78,14 @@ class ChessSoloBoard(Board):
                     self.move_count[(r, c)] = 0
 
     def import_board(self, board: list[list[int]]) -> None:
-        super().import_board(board)
+        self.board = []
+        for row in board:
+            self.board.append([])
+            for piece in row:
+                if piece == 0:
+                    self.board[-1].append(None)
+                else:
+                    self.board[-1].append(int_to_piece[abs(piece)](True))
         self._initialize_move_count()
     
     def is_valid_move(self, from_pos: tuple[int, int], to_pos: tuple[int, int]) -> bool:
@@ -180,7 +195,6 @@ MODE={
  
 class ChessPuzzle:
     def __init__(self, mode, board_layout: list[list[int]] | dict | None = None):
-        super().__init__()
         if mode not in MODE:
             mode = "ranger"
 
