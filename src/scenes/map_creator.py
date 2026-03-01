@@ -392,7 +392,7 @@ class MapCreatorScene(Scene):
             self.feedback.show("Error checking map!", True)
             return
 
-        folder = "chess_{self.mode}"
+        folder = f"chess_{self.mode}"
         filepath = DATA_URL + f'{folder}/puzzle_map.json'
         
         os.makedirs(os.path.dirname(filepath), exist_ok=True)

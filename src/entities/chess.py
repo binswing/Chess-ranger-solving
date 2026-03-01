@@ -1,6 +1,6 @@
 import numpy as np
 from src.entities.figure import *
-
+import copy
 class ChessRangerBoard(Board): 
     pass
     
@@ -270,7 +270,7 @@ class ChessPuzzle:
         if state["turn"] is not None and hasattr(self.board, "waiting_turn"):
             self.board.waiting_turn = state["turn"]
         if state["move_count"] is not None and hasattr(self.board, "move_count"):
-            self.board.move_count = state["move_count"]
+            self.board.move_count = copy.deepcopy(state["move_count"])
 
     def calculate_heuristic(self, state=None) -> int:
         # pieces_count = self.board.count_pieces()
