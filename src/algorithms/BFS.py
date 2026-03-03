@@ -35,7 +35,13 @@ class BFSSolver(ChessSolver):
     def hash_state(self, state):
         board_tuple = tuple(tuple(row) for row in state["board"])
         turn = state["turn"]
-        return (board_tuple, turn)
+        
+        move_count = state.get("move_count", {})
+        move_items = tuple(sorted(
+            (f"{k[0]},{k[1]}", v) for k, v in move_count.items()
+        ))
+        
+        return (board_tuple, turn, move_items)
 
     def take_action(self):
         if self.solution_found or (not self.queue and not self.pending_moves and not self.current_parent_node):
