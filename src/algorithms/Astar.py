@@ -39,7 +39,14 @@ class AStarSolver(ChessSolver):
     def hash_state(self, state):
         board_tuple = tuple(tuple(row) for row in state["board"])
         turn = state["turn"]
-        return (board_tuple, turn)
+        
+        move_items = None
+        if state.get("move_count") is not None:
+            move_items = tuple(sorted(
+                (f"{k[0]},{k[1]}", v) for k, v in state.get("move_count").items()
+            ))
+        
+        return (board_tuple, turn, move_items)
 
     def take_action(self):
         if self.solution_found or (not self.pq and not self.pending_moves and not self.current_parent_node):
@@ -80,3 +87,4 @@ class AStarSolver(ChessSolver):
             self.current_parent_node = best_node
             self.env.set_state(best_node.state)
             self.pending_moves = self.env.board.get_all_valid_moves()
+            
