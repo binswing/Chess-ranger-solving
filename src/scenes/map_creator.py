@@ -11,6 +11,10 @@ from src.entities.figure import int_to_piece
 from src.entities.chess import ChessPuzzle
 from src.algorithms.Astar import AStarSolver
 
+MODE_LIST = ["ranger", "melee", "solo"]
+ONLY_WHITE_MODE_LIST = ["ranger", "solo"]
+
+
 class MapCreatorScene(Scene):
     def __init__(self, manager, grid_rows=8, grid_cols=8):
         super().__init__(manager)
@@ -23,7 +27,7 @@ class MapCreatorScene(Scene):
         self.trash_icon = pygame.font.SysFont("segoe ui emoji", trash_font_size).render("🗑️", True, (200, 50, 50))
         self.coord_font = pygame.font.SysFont("arial", coord_font_size, bold=True)
 
-        self.mode = "ranger" 
+        self.mode = MODE_LIST[0] 
         self.board_data = [[0 for _ in range(8)] for _ in range(8)]
         self.drag_piece_code = None  
         self.selected_tool_code = 1 
@@ -80,10 +84,8 @@ class MapCreatorScene(Scene):
 
     def toggle_mode(self):
         if self.is_play_mode: return
-        if self.mode == "ranger":
-            self.mode = "melee"
-        else:
-            self.mode = "ranger"
+        self.mode = MODE_LIST[(MODE_LIST.index(self.mode)+1)%len(MODE_LIST)]
+        if self.mode in ONLY_WHITE_MODE_LIST:
             for r in range(8):
                 for c in range(8):
                     if self.board_data[r][c] < 0:
@@ -104,10 +106,10 @@ class MapCreatorScene(Scene):
             if count < 2:
                 self.feedback.show("Need 2+ pieces!", True)
                 return
-
+            if not self.solo_board_valid_check():
+                return
             self.backup_board_data = copy.deepcopy(self.board_data)
-            puzzle_data = { "board": self.board_data, "turn": True }
-            self.temp_game_env = ChessPuzzle(self.mode, puzzle_data)
+            self.temp_game_env = ChessPuzzle(self.mode, self.board_data)
             
             self.is_play_mode = True
             self.test_btn.text = "Stop Testing"
@@ -278,8 +280,8 @@ class MapCreatorScene(Scene):
         
         for row in range(6):
             for col in range(3):
-                if self.mode == "ranger" and col == 2: continue
-                
+                if self.mode in ONLY_WHITE_MODE_LIST and col == 2: continue
+
                 code = None
                 if col == 0:
                     if row == 0: code = 0 
@@ -320,7 +322,7 @@ class MapCreatorScene(Scene):
         
         for row in range(6):
             for col in range(3):
-                if self.mode == "ranger" and col == 2: continue
+                if self.mode in ONLY_WHITE_MODE_LIST and col == 2: continue
                 
                 code = None
                 if col == 0:
@@ -354,12 +356,13 @@ class MapCreatorScene(Scene):
         if self.is_play_mode:
             self.feedback.show("Stop testing first!", True)
             return
-
+        
         count = sum(1 for r in self.board_data for c in r if c != 0)
         if count < 2:
             self.feedback.show("Map too empty!", True)
             return
-
+        if not self.solo_board_valid_check():
+            return
         self.feedback.show("Checking Solvability...", False)
         self.draw() 
         pygame.display.flip()
@@ -367,11 +370,11 @@ class MapCreatorScene(Scene):
         puzzle_data = { "board": self.board_data, "turn": True }
         
         try:
-            env = ChessPuzzle(self.mode, puzzle_data)
+            env = ChessPuzzle(self.mode, self.board_data)
             solver = AStarSolver(env)
             steps = 0
             solved = False
-            while steps < 5000:
+            while steps < 50000:
                 state, move = solver.take_action()
                 if solver.solution_found:
                     solved = True
@@ -389,7 +392,7 @@ class MapCreatorScene(Scene):
             self.feedback.show("Error checking map!", True)
             return
 
-        folder = "chess_ranger" if self.mode == "ranger" else "chess_melee"
+        folder = f"chess_{self.mode}"
         filepath = DATA_URL + f'{folder}/puzzle_map.json'
         
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -411,3 +414,25 @@ class MapCreatorScene(Scene):
             self.feedback.show(f"Saved! ({count} pieces)")
         else:
             self.feedback.show("Map already exists!", True)
+
+        
+    # Support functions
+    # solo mode
+    def solo_board_valid_check(self) -> bool:
+        if self.mode == "solo":
+            king_count = 0
+            for r in range(8):
+                for c in range(8):
+                    if abs(self.board_data[r][c]) == 6:
+                        king_count += 1
+                    elif self.board_data[r][c] < 0:
+                        self.feedback.show("Cannot have black pieces!", True)
+                        return False
+
+            if king_count == 0:
+                self.feedback.show("Needs a King!", True)
+                return False
+            if king_count > 1:
+                self.feedback.show("One King only!", True)
+                return False
+        return True
