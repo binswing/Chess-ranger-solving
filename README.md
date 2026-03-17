@@ -4,9 +4,15 @@
     <a href="https://www.python.org/downloads/release/python-31213/">
         <img src="https://img.shields.io/badge/Python-3.12%2B-blue" height="20" alt="Python 3.12+">
     </a>
-    <h3>Chess Puzzle Game - inspired by <a href="https://www.puzzle-chess.com/">Puzzle Chess</a></h3>
+    <a href="https://www.pygame.org/news">
+        <img src="https://img.shields.io/badge/Pygame-2.6.1-green" height="20" alt="Pygame 2.6.1">
+    </a>
+    <a href="https://numpy.org/install/">
+        <img src="https://img.shields.io/badge/NumPy-2.4.2-blue" height="20" alt="NumPy 2.4.2">
+    </a>
+    <h3>Chess Puzzle Solving - inspired by <a href="https://www.puzzle-chess.com/">Puzzle Chess</a></h3>
 </div>
-A chess puzzle game inspired by traditional chess mechanics but designed with unique, challenging puzzle modes. CPS includes a built-in map creator and real-time visualization of pathfinding algorithms like A*, BFS, and DFS solving the board.
+A Pygame-based chess puzzle game inspired by traditional chess mechanics but designed with unique, challenging puzzle modes. CPS includes a built-in map creator and real-time visualization of pathfinding algorithms like A*, BFS, and DFS solving the board.
 
 ## 🌟 Features
 
